@@ -5,10 +5,6 @@
   "@appName": {
     "description": "App name - DO NOT TRANSLATE"
   },
-  "appDescription": "Baixe faixas do Spotify em qualidade sem perdas de Tidal, Qobuz e Amazon Music.",
-  "@appDescription": {
-    "description": "App description shown in about page"
-  },
   "navHome": "Início",
   "@navHome": {
     "description": "Bottom navigation - Home tab"
@@ -16,10 +12,6 @@
   "navLibrary": "Library",
   "@navLibrary": {
     "description": "Bottom navigation - Library tab"
-  },
-  "navHistory": "Histórico",
-  "@navHistory": {
-    "description": "Bottom navigation - History tab (legacy)"
   },
   "navSettings": "Configurações",
   "@navSettings": {
@@ -33,20 +25,6 @@
   "@homeTitle": {
     "description": "Home screen title"
   },
-  "homeSearchHint": "Pesquise ou cole a URL do Spotify...",
-  "@homeSearchHint": {
-    "description": "Placeholder text in search box"
-  },
-  "homeSearchHintExtension": "Pesquisar com {extensionName}...",
-  "@homeSearchHintExtension": {
-    "description": "Placeholder when extension search is active",
-    "placeholders": {
-      "extensionName": {
-        "type": "String",
-        "description": "Name of the active extension"
-      }
-    }
-  },
   "homeSubtitle": "Cole um link do Spotify ou procure por nome",
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
@@ -59,24 +37,6 @@
   "@homeRecent": {
     "description": "Section header for recent searches"
   },
-  "historyTitle": "Histórico",
-  "@historyTitle": {
-    "description": "History screen title"
-  },
-  "historyDownloading": "Baixando ({count})",
-  "@historyDownloading": {
-    "description": "Tab showing active downloads count",
-    "placeholders": {
-      "count": {
-        "type": "int",
-        "description": "Number of active downloads"
-      }
-    }
-  },
-  "historyDownloaded": "Baixados",
-  "@historyDownloaded": {
-    "description": "Tab showing completed downloads"
-  },
   "historyFilterAll": "Tudo",
   "@historyFilterAll": {
     "description": "Filter chip - show all items"
@@ -88,48 +48,6 @@
   "historyFilterSingles": "Singles",
   "@historyFilterSingles": {
     "description": "Filter chip - show singles only"
-  },
-  "historyTracksCount": "{count, plural, one {}=1{1 faixa} other{{count} faixas}}",
-  "@historyTracksCount": {
-    "description": "Track count with plural form",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "historyAlbumsCount": "{count, plural, one {}=1{1 álbum} other{{count} álbuns}}",
-  "@historyAlbumsCount": {
-    "description": "Album count with plural form",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "historyNoDownloads": "Nenhum histórico de downloads",
-  "@historyNoDownloads": {
-    "description": "Empty state title"
-  },
-  "historyNoDownloadsSubtitle": "As faixas baixadas aparecerão aqui",
-  "@historyNoDownloadsSubtitle": {
-    "description": "Empty state subtitle"
-  },
-  "historyNoAlbums": "Sem álbuns baixados",
-  "@historyNoAlbums": {
-    "description": "Empty state when filtering albums"
-  },
-  "historyNoAlbumsSubtitle": "Baixe várias faixas de um álbum para vê-las aqui",
-  "@historyNoAlbumsSubtitle": {
-    "description": "Empty state subtitle for albums filter"
-  },
-  "historyNoSingles": "Sem singles baixados",
-  "@historyNoSingles": {
-    "description": "Empty state when filtering singles"
-  },
-  "historyNoSinglesSubtitle": "Os downloads de faixa individuais aparecerão aqui",
-  "@historyNoSinglesSubtitle": {
-    "description": "Empty state subtitle for singles filter"
   },
   "historySearchHint": "Pesquisar histórico...",
   "@historySearchHint": {
@@ -163,34 +81,6 @@
   "@downloadTitle": {
     "description": "Download settings page title"
   },
-  "downloadLocation": "Local dos Downloads",
-  "@downloadLocation": {
-    "description": "Setting for download folder"
-  },
-  "downloadLocationSubtitle": "Escolha onde salvar os arquivos",
-  "@downloadLocationSubtitle": {
-    "description": "Subtitle for download location"
-  },
-  "downloadLocationDefault": "Local padrão",
-  "@downloadLocationDefault": {
-    "description": "Shown when using default folder"
-  },
-  "downloadDefaultService": "Serviço Padrão",
-  "@downloadDefaultService": {
-    "description": "Setting for preferred download service (Tidal/Qobuz/Amazon)"
-  },
-  "downloadDefaultServiceSubtitle": "Serviço usado para downloads",
-  "@downloadDefaultServiceSubtitle": {
-    "description": "Subtitle for default service"
-  },
-  "downloadDefaultQuality": "Qualidade Predefinida",
-  "@downloadDefaultQuality": {
-    "description": "Setting for audio quality"
-  },
-  "downloadAskQuality": "Perguntar qualidade antes de baixar",
-  "@downloadAskQuality": {
-    "description": "Toggle to show quality picker"
-  },
   "downloadAskQualitySubtitle": "Mostrar seletor de qualidade para cada download",
   "@downloadAskQualitySubtitle": {
     "description": "Subtitle for ask quality toggle"
@@ -203,37 +93,9 @@
   "@downloadFolderOrganization": {
     "description": "Setting for folder structure"
   },
-  "downloadSeparateSingles": "Separar Singles",
-  "@downloadSeparateSingles": {
-    "description": "Toggle to separate single tracks"
-  },
-  "downloadSeparateSinglesSubtitle": "Colocar singles numa pasta separada",
-  "@downloadSeparateSinglesSubtitle": {
-    "description": "Subtitle for separate singles toggle"
-  },
-  "qualityBest": "Melhor Disponível",
-  "@qualityBest": {
-    "description": "Audio quality option - highest available"
-  },
-  "qualityFlac": "FLAC",
-  "@qualityFlac": {
-    "description": "Audio quality option - FLAC lossless"
-  },
-  "quality320": "320 kbps",
-  "@quality320": {
-    "description": "Audio quality option - 320kbps MP3"
-  },
-  "quality128": "128 kbps",
-  "@quality128": {
-    "description": "Audio quality option - 128kbps MP3"
-  },
   "appearanceTitle": "Aparência",
   "@appearanceTitle": {
     "description": "Appearance settings page title"
-  },
-  "appearanceTheme": "Tema",
-  "@appearanceTheme": {
-    "description": "Theme mode setting"
   },
   "appearanceThemeSystem": "Sistema",
   "@appearanceThemeSystem": {
@@ -255,10 +117,6 @@
   "@appearanceDynamicColorSubtitle": {
     "description": "Subtitle for dynamic color"
   },
-  "appearanceAccentColor": "Cor de Destaque",
-  "@appearanceAccentColor": {
-    "description": "Custom accent color picker"
-  },
   "appearanceHistoryView": "Visualização do Histórico",
   "@appearanceHistoryView": {
     "description": "Layout style for history"
@@ -274,10 +132,6 @@
   "optionsTitle": "Opções",
   "@optionsTitle": {
     "description": "Options settings page title"
-  },
-  "optionsSearchSource": "Origem da Pesquisa",
-  "@optionsSearchSource": {
-    "description": "Section for search provider settings"
   },
   "optionsPrimaryProvider": "Provedor Primário",
   "@optionsPrimaryProvider": {
@@ -307,38 +161,6 @@
   "optionsAutoFallbackSubtitle": "Tentar outros serviços se o download falhar",
   "@optionsAutoFallbackSubtitle": {
     "description": "Subtitle for auto fallback"
-  },
-  "optionsAutoSkipUnavailableTracks": "Auto Skip Unavailable Tracks",
-  "@optionsAutoSkipUnavailableTracks": {
-    "description": "Toggle to skip to the next queue track when current track stream resolution fails"
-  },
-  "optionsAutoSkipUnavailableTracksSubtitleOn": "Automatically skip to the next queue track when a stream cannot be resolved.",
-  "@optionsAutoSkipUnavailableTracksSubtitleOn": {
-    "description": "Subtitle when auto skip on resolve failure is enabled"
-  },
-  "optionsAutoSkipUnavailableTracksSubtitleOff": "Stop on failed track resolution and show an error.",
-  "@optionsAutoSkipUnavailableTracksSubtitleOff": {
-    "description": "Subtitle when auto skip on resolve failure is disabled"
-  },
-  "optionsInteractionMode": "Interaction Mode",
-  "@optionsInteractionMode": {
-    "description": "Tap behavior mode for track lists"
-  },
-  "modeDownloader": "Downloader Mode",
-  "@modeDownloader": {
-    "description": "Interaction mode where taps queue downloads"
-  },
-  "modeDownloaderSubtitle": "Tap tracks to add them to download queue",
-  "@modeDownloaderSubtitle": {
-    "description": "Subtitle for downloader interaction mode"
-  },
-  "modeStreaming": "Streaming Mode",
-  "@modeStreaming": {
-    "description": "Interaction mode where taps start playback"
-  },
-  "modeStreamingSubtitle": "Tap tracks to play instantly",
-  "@modeStreamingSubtitle": {
-    "description": "Subtitle for streaming interaction mode"
   },
   "optionsUseExtensionProviders": "Usar Provedores de Extensão",
   "@optionsUseExtensionProviders": {
@@ -470,22 +292,6 @@
   "@extensionsTitle": {
     "description": "Extensions page title"
   },
-  "extensionsInstalled": "Extensões Instaladas",
-  "@extensionsInstalled": {
-    "description": "Section header for installed extensions"
-  },
-  "extensionsNone": "Nenhuma extensão instalada",
-  "@extensionsNone": {
-    "description": "Empty state title"
-  },
-  "extensionsNoneSubtitle": "Instalar extensões a partir da aba Loja",
-  "@extensionsNoneSubtitle": {
-    "description": "Empty state subtitle"
-  },
-  "extensionsEnabled": "Habilitado",
-  "@extensionsEnabled": {
-    "description": "Extension status - active"
-  },
   "extensionsDisabled": "Desabilitado",
   "@extensionsDisabled": {
     "description": "Extension status - inactive"
@@ -511,10 +317,6 @@
   "extensionsUninstall": "Desinstalar",
   "@extensionsUninstall": {
     "description": "Uninstall extension button"
-  },
-  "extensionsSetAsSearch": "Definir como Provedor de Pesquisa",
-  "@extensionsSetAsSearch": {
-    "description": "Use extension for search"
   },
   "storeTitle": "Loja de Extensões",
   "@storeTitle": {
@@ -612,10 +414,6 @@
   "@aboutSocial": {
     "description": "Section for social links"
   },
-  "aboutSupport": "Apoiar",
-  "@aboutSupport": {
-    "description": "Section for support/donation links"
-  },
   "aboutApp": "Aplicativo",
   "@aboutApp": {
     "description": "Section for app info"
@@ -635,14 +433,6 @@
   "aboutSjdonadoDesc": "Creator of I Don't Have Spotify (IDHS). The fallback link resolver that saves the day!",
   "@aboutSjdonadoDesc": {
     "description": "Credit description for sjdonado"
-  },
-  "aboutDoubleDouble": "DoubleDouble",
-  "@aboutDoubleDouble": {
-    "description": "Name of Amazon API service - DO NOT TRANSLATE"
-  },
-  "aboutDoubleDoubleDesc": "API incrível para downloads do Amazon Music. Obrigado por fazê-lo gratuitamente!",
-  "@aboutDoubleDoubleDesc": {
-    "description": "Credit for DoubleDouble API"
   },
   "aboutDabMusic": "DAB Music",
   "@aboutDabMusic": {
@@ -664,35 +454,6 @@
   "@aboutAppDescription": {
     "description": "App description in header card"
   },
-  "albumTitle": "Álbum",
-  "@albumTitle": {
-    "description": "Album screen title"
-  },
-  "albumTracks": "{count, plural, one {}=1{1 faixa} other{{count} faixas}}",
-  "@albumTracks": {
-    "description": "Album track count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "albumDownloadAll": "Baixar Tudo",
-  "@albumDownloadAll": {
-    "description": "Button to download all tracks"
-  },
-  "albumDownloadRemaining": "Downloads Restantes",
-  "@albumDownloadRemaining": {
-    "description": "Button to download remaining tracks"
-  },
-  "playlistTitle": "Playlist",
-  "@playlistTitle": {
-    "description": "Playlist screen title"
-  },
-  "artistTitle": "Artista",
-  "@artistTitle": {
-    "description": "Artist screen title"
-  },
   "artistAlbums": "Álbuns",
   "@artistAlbums": {
     "description": "Section header for artist albums"
@@ -704,15 +465,6 @@
   "artistCompilations": "Compilações",
   "@artistCompilations": {
     "description": "Section header for compilations"
-  },
-  "artistReleases": "{count, plural, one {}=1{1 lançamento} other{{count} lançamentos}}",
-  "@artistReleases": {
-    "description": "Artist release count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "artistPopular": "Populares",
   "@artistPopular": {
@@ -727,34 +479,6 @@
         "description": "Formatted listener count"
       }
     }
-  },
-  "trackMetadataTitle": "Informações da Faixa",
-  "@trackMetadataTitle": {
-    "description": "Track metadata screen title"
-  },
-  "trackMetadataArtist": "Artista",
-  "@trackMetadataArtist": {
-    "description": "Metadata field - artist name"
-  },
-  "trackMetadataAlbum": "Álbum",
-  "@trackMetadataAlbum": {
-    "description": "Metadata field - album name"
-  },
-  "trackMetadataDuration": "Duração",
-  "@trackMetadataDuration": {
-    "description": "Metadata field - track length"
-  },
-  "trackMetadataQuality": "Qualidade",
-  "@trackMetadataQuality": {
-    "description": "Metadata field - audio quality"
-  },
-  "trackMetadataPath": "Caminho do Arquivo",
-  "@trackMetadataPath": {
-    "description": "Metadata field - file location"
-  },
-  "trackMetadataDownloadedAt": "Baixado",
-  "@trackMetadataDownloadedAt": {
-    "description": "Metadata field - download date"
   },
   "trackMetadataService": "Serviço",
   "@trackMetadataService": {
@@ -772,53 +496,9 @@
   "@trackMetadataDelete": {
     "description": "Action button - delete track"
   },
-  "trackMetadataRedownload": "Baixar Novamente",
-  "@trackMetadataRedownload": {
-    "description": "Action button - download again"
-  },
-  "trackMetadataOpenFolder": "Abrir Pasta",
-  "@trackMetadataOpenFolder": {
-    "description": "Action button - open containing folder"
-  },
-  "setupTitle": "Bem-vindo ao SpotiFLAC",
-  "@setupTitle": {
-    "description": "Setup wizard title"
-  },
-  "setupSubtitle": "Vamos começar",
-  "@setupSubtitle": {
-    "description": "Setup wizard subtitle"
-  },
-  "setupStoragePermission": "Permissão de Armazenamento",
-  "@setupStoragePermission": {
-    "description": "Storage permission step title"
-  },
-  "setupStoragePermissionSubtitle": "Necessária para salvar arquivos baixados",
-  "@setupStoragePermissionSubtitle": {
-    "description": "Explanation for storage permission"
-  },
-  "setupStoragePermissionGranted": "Permissão concedida",
-  "@setupStoragePermissionGranted": {
-    "description": "Status when permission granted"
-  },
-  "setupStoragePermissionDenied": "Permissão negada",
-  "@setupStoragePermissionDenied": {
-    "description": "Status when permission denied"
-  },
   "setupGrantPermission": "Conceder Permissão",
   "@setupGrantPermission": {
     "description": "Button to request permission"
-  },
-  "setupDownloadLocation": "Local do Download",
-  "@setupDownloadLocation": {
-    "description": "Download folder step title"
-  },
-  "setupChooseFolder": "Selecionar Pasta",
-  "@setupChooseFolder": {
-    "description": "Button to pick folder"
-  },
-  "setupContinue": "Continuar",
-  "@setupContinue": {
-    "description": "Continue to next step button"
   },
   "setupSkip": "Ignorar por enquanto",
   "@setupSkip": {
@@ -827,10 +507,6 @@
   "setupStorageAccessRequired": "Acesso ao Armazenamento Necessário",
   "@setupStorageAccessRequired": {
     "description": "Title when storage access needed"
-  },
-  "setupStorageAccessMessage": "O SpotiFLAC precisa da permissão \"Acesso a todos os arquivos\" para salvar arquivos de música na sua pasta escolhida.",
-  "@setupStorageAccessMessage": {
-    "description": "Explanation for storage access"
   },
   "setupStorageAccessMessageAndroid11": "O Android 11+ requer a permissão \"Acesso a Todos os Arquivos\" para salvar arquivos na pasta de download escolhida.",
   "@setupStorageAccessMessageAndroid11": {
@@ -862,10 +538,6 @@
         "type": "String"
       }
     }
-  },
-  "setupSelectDownloadFolder": "Escolher Pasta de Download",
-  "@setupSelectDownloadFolder": {
-    "description": "Folder selection step title"
   },
   "setupUseDefaultFolder": "Usar Pasta Padrão?",
   "@setupUseDefaultFolder": {
@@ -915,26 +587,6 @@
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
-  "setupStepStorage": "Armazenamento",
-  "@setupStepStorage": {
-    "description": "Setup step indicator - storage"
-  },
-  "setupStepNotification": "Notificação",
-  "@setupStepNotification": {
-    "description": "Setup step indicator - notification"
-  },
-  "setupStepFolder": "Pasta",
-  "@setupStepFolder": {
-    "description": "Setup step indicator - folder"
-  },
-  "setupStepSpotify": "Spotify",
-  "@setupStepSpotify": {
-    "description": "Setup step indicator - Spotify API"
-  },
-  "setupStepPermission": "Permissão",
-  "@setupStepPermission": {
-    "description": "Setup step indicator - permission"
-  },
   "setupStorageGranted": "Permissão de Armazenamento Concedida!",
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
@@ -955,14 +607,6 @@
   "@setupNotificationEnable": {
     "description": "Button to enable notifications"
   },
-  "setupNotificationDescription": "Seja notificado quando os downloads completarem ou exigirem atenção.",
-  "@setupNotificationDescription": {
-    "description": "Explanation for notifications"
-  },
-  "setupFolderSelected": "Pasta para Download Selecionada!",
-  "@setupFolderSelected": {
-    "description": "Success message for folder selection"
-  },
   "setupFolderChoose": "Escolher Pasta de Download",
   "@setupFolderChoose": {
     "description": "Button to choose folder"
@@ -971,57 +615,13 @@
   "@setupFolderDescription": {
     "description": "Explanation for folder selection"
   },
-  "setupChangeFolder": "Alterar Pasta",
-  "@setupChangeFolder": {
-    "description": "Button to change selected folder"
-  },
   "setupSelectFolder": "Seleccionar Pasta",
   "@setupSelectFolder": {
     "description": "Button to select folder"
   },
-  "setupSpotifyApiOptional": "API do Spotify (opcional)",
-  "@setupSpotifyApiOptional": {
-    "description": "Spotify API step title"
-  },
-  "setupSpotifyApiDescription": "Adicione as suas credenciais da API do Spotify para obter melhores resultados de busca e acesso a conteúdo exclusivo do Spotify.",
-  "@setupSpotifyApiDescription": {
-    "description": "Explanation for Spotify API"
-  },
-  "setupUseSpotifyApi": "Usar API do Spotify",
-  "@setupUseSpotifyApi": {
-    "description": "Toggle to enable Spotify API"
-  },
-  "setupEnterCredentialsBelow": "Insira as suas credenciais abaixo",
-  "@setupEnterCredentialsBelow": {
-    "description": "Prompt to enter credentials"
-  },
-  "setupUsingDeezer": "Usando o Deezer (nenhuma conta necessária)",
-  "@setupUsingDeezer": {
-    "description": "Status when using Deezer"
-  },
-  "setupEnterClientId": "Insira o Spotify Client ID",
-  "@setupEnterClientId": {
-    "description": "Placeholder for client ID field"
-  },
-  "setupEnterClientSecret": "Insira o Spotify Client Secret",
-  "@setupEnterClientSecret": {
-    "description": "Placeholder for client secret field"
-  },
-  "setupGetFreeCredentials": "Receba as suas credenciais de API gratuitas na Spotify Developer Dashboard.",
-  "@setupGetFreeCredentials": {
-    "description": "Info about getting Spotify credentials"
-  },
   "setupEnableNotifications": "Habilitar Notificações",
   "@setupEnableNotifications": {
     "description": "Button to enable notifications"
-  },
-  "setupProceedToNextStep": "Você já pode prosseguir para o próximo passo.",
-  "@setupProceedToNextStep": {
-    "description": "Message after completing a step"
-  },
-  "setupNotificationProgressDescription": "Você receberá notificações de progresso dos downloads.",
-  "@setupNotificationProgressDescription": {
-    "description": "Info about notification usage"
   },
   "setupNotificationBackgroundDescription": "Seja notificado sobre o progresso e conclusão do download. Isso ajuda você a acompanhar os downloads quando o app estiver em segundo plano.",
   "@setupNotificationBackgroundDescription": {
@@ -1031,10 +631,6 @@
   "@setupSkipForNow": {
     "description": "Skip button text"
   },
-  "setupBack": "Voltar",
-  "@setupBack": {
-    "description": "Back button text"
-  },
   "setupNext": "Próximo",
   "@setupNext": {
     "description": "Next button text"
@@ -1043,25 +639,13 @@
   "@setupGetStarted": {
     "description": "Final setup button"
   },
-  "setupSkipAndStart": "Ignorar e Iniciar",
-  "@setupSkipAndStart": {
-    "description": "Skip setup and start app"
-  },
   "setupAllowAccessToManageFiles": "Por favor, habilite \"Permitir acesso para gerenciar todos os arquivos\" na próxima tela.",
   "@setupAllowAccessToManageFiles": {
     "description": "Instruction for file access permission"
   },
-  "setupGetCredentialsFromSpotify": "Obter credenciais do developer.spotify.com",
-  "@setupGetCredentialsFromSpotify": {
-    "description": "Link text for Spotify developer portal"
-  },
   "dialogCancel": "Cancelar",
   "@dialogCancel": {
     "description": "Dialog button - cancel action"
-  },
-  "dialogOk": "OK",
-  "@dialogOk": {
-    "description": "Dialog button - confirm/acknowledge"
   },
   "dialogSave": "Salvar",
   "@dialogSave": {
@@ -1075,25 +659,9 @@
   "@dialogRetry": {
     "description": "Dialog button - retry action"
   },
-  "dialogClose": "Fechar",
-  "@dialogClose": {
-    "description": "Dialog button - close dialog"
-  },
-  "dialogYes": "Sim",
-  "@dialogYes": {
-    "description": "Dialog button - confirm yes"
-  },
-  "dialogNo": "Não",
-  "@dialogNo": {
-    "description": "Dialog button - confirm no"
-  },
   "dialogClear": "Limpar",
   "@dialogClear": {
     "description": "Dialog button - clear items"
-  },
-  "dialogConfirm": "Confirmar",
-  "@dialogConfirm": {
-    "description": "Dialog button - confirm action"
   },
   "dialogDone": "Concluído",
   "@dialogDone": {
@@ -1123,33 +691,9 @@
   "@dialogUnsavedChanges": {
     "description": "Dialog message - unsaved changes"
   },
-  "dialogDownloadFailed": "Download Falhou",
-  "@dialogDownloadFailed": {
-    "description": "Dialog title - download error"
-  },
-  "dialogTrackLabel": "Faixa:",
-  "@dialogTrackLabel": {
-    "description": "Label for track name in error dialog"
-  },
-  "dialogArtistLabel": "Artista:",
-  "@dialogArtistLabel": {
-    "description": "Label for artist name in error dialog"
-  },
-  "dialogErrorLabel": "Erro:",
-  "@dialogErrorLabel": {
-    "description": "Label for error message"
-  },
   "dialogClearAll": "Limpar Tudo",
   "@dialogClearAll": {
     "description": "Dialog title - clear all items"
-  },
-  "dialogClearAllDownloads": "Você tem certeza que deseja limpar todos os downloads?",
-  "@dialogClearAllDownloads": {
-    "description": "Dialog message - clear downloads confirmation"
-  },
-  "dialogRemoveFromDevice": "Remover do dispositivo?",
-  "@dialogRemoveFromDevice": {
-    "description": "Dialog title - delete file confirmation"
   },
   "dialogRemoveExtension": "Remover Extensão",
   "@dialogRemoveExtension": {
@@ -1289,15 +833,6 @@
   "@snackbarViewQueue": {
     "description": "Snackbar action - view download queue"
   },
-  "snackbarFailedToLoad": "Falha ao carregar: {error}",
-  "@snackbarFailedToLoad": {
-    "description": "Snackbar - loading error",
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
   "snackbarUrlCopied": "URL do {platform} copiado para a área de transferência",
   "@snackbarUrlCopied": {
     "description": "Snackbar - URL copied",
@@ -1358,23 +893,9 @@
   "@errorRateLimitedMessage": {
     "description": "Error message - rate limit explanation"
   },
-  "errorFailedToLoad": "Falha ao carregar {item}",
-  "@errorFailedToLoad": {
-    "description": "Error message - loading failed",
-    "placeholders": {
-      "item": {
-        "type": "String",
-        "description": "Item that failed to load (album/playlist/etc)"
-      }
-    }
-  },
   "errorNoTracksFound": "Nenhuma faixa encontrada",
   "@errorNoTracksFound": {
     "description": "Error - search returned no results"
-  },
-  "errorSeekNotSupported": "Seeking is not supported for this live stream",
-  "@errorSeekNotSupported": {
-    "description": "Error - seek disabled for live decrypted stream"
   },
   "errorMissingExtensionSource": "Não é possível carregar {item}: faltando a fonte da extensão",
   "@errorMissingExtensionSource": {
@@ -1384,34 +905,6 @@
         "type": "String"
       }
     }
-  },
-  "statusQueued": "Na Fila",
-  "@statusQueued": {
-    "description": "Download status - waiting in queue"
-  },
-  "statusDownloading": "Baixando",
-  "@statusDownloading": {
-    "description": "Download status - in progress"
-  },
-  "statusFinalizing": "Finalizando",
-  "@statusFinalizing": {
-    "description": "Download status - writing metadata"
-  },
-  "statusCompleted": "Concluído",
-  "@statusCompleted": {
-    "description": "Download status - finished"
-  },
-  "statusFailed": "Falhou",
-  "@statusFailed": {
-    "description": "Download status - error occurred"
-  },
-  "statusSkipped": "Ignorado",
-  "@statusSkipped": {
-    "description": "Download status - already exists"
-  },
-  "statusPaused": "Pausado",
-  "@statusPaused": {
-    "description": "Download status - paused"
   },
   "actionPause": "Pausar",
   "@actionPause": {
@@ -1425,14 +918,6 @@
   "@actionCancel": {
     "description": "Action button - cancel operation"
   },
-  "actionStop": "Parar",
-  "@actionStop": {
-    "description": "Action button - stop operation"
-  },
-  "actionSelect": "Selecionar",
-  "@actionSelect": {
-    "description": "Action button - enter selection mode"
-  },
   "actionSelectAll": "Selecionar Tudo",
   "@actionSelectAll": {
     "description": "Action button - select all items"
@@ -1440,14 +925,6 @@
   "actionDeselect": "Desselecionar",
   "@actionDeselect": {
     "description": "Action button - deselect all"
-  },
-  "actionPaste": "Colar",
-  "@actionPaste": {
-    "description": "Action button - paste from clipboard"
-  },
-  "actionImportCsv": "Importar CSV",
-  "@actionImportCsv": {
-    "description": "Action button - import CSV file"
   },
   "actionRemoveCredentials": "Remover Credenciais",
   "@actionRemoveCredentials": {
@@ -1469,19 +946,6 @@
   "selectionAllSelected": "Todas as faixas selecionadas",
   "@selectionAllSelected": {
     "description": "Status - all items selected"
-  },
-  "selectionTapToSelect": "Toque nas faixas para selecionar",
-  "@selectionTapToSelect": {
-    "description": "Hint - how to select items"
-  },
-  "selectionDeleteTracks": "Apagar {count} {count, plural, one {}=1{faixa} other{faixas}}",
-  "@selectionDeleteTracks": {
-    "description": "Delete button with count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "selectionSelectToDelete": "Selecione as faixas para apagar",
   "@selectionSelectToDelete": {
@@ -1523,50 +987,9 @@
   "@tooltipPlay": {
     "description": "Tooltip - play button"
   },
-  "tooltipCancel": "Cancelar",
-  "@tooltipCancel": {
-    "description": "Tooltip - cancel button"
-  },
-  "tooltipStop": "Parar",
-  "@tooltipStop": {
-    "description": "Tooltip - stop button"
-  },
-  "tooltipRetry": "Tentar Novamente",
-  "@tooltipRetry": {
-    "description": "Tooltip - retry button"
-  },
-  "tooltipRemove": "Remover",
-  "@tooltipRemove": {
-    "description": "Tooltip - remove button"
-  },
-  "tooltipClear": "Limpar",
-  "@tooltipClear": {
-    "description": "Tooltip - clear button"
-  },
-  "tooltipPaste": "Colar",
-  "@tooltipPaste": {
-    "description": "Tooltip - paste button"
-  },
   "filenameFormat": "Formato do Nome do Arquivo",
   "@filenameFormat": {
     "description": "Setting title - filename pattern"
-  },
-  "filenameFormatPreview": "Prévia: {preview}",
-  "@filenameFormatPreview": {
-    "description": "Preview of filename pattern",
-    "placeholders": {
-      "preview": {
-        "type": "String"
-      }
-    }
-  },
-  "filenameAvailablePlaceholders": "Substituições permitidas:",
-  "@filenameAvailablePlaceholders": {
-    "description": "Label for placeholder list"
-  },
-  "filenameHint": "{artist} - {title}",
-  "@filenameHint": {
-    "description": "Default filename format hint"
   },
   "filenameShowAdvancedTags": "Show advanced tags",
   "@filenameShowAdvancedTags": {
@@ -1575,10 +998,6 @@
   "filenameShowAdvancedTagsDescription": "Enable formatted tags for track padding and date patterns",
   "@filenameShowAdvancedTagsDescription": {
     "description": "Description for advanced filename tag toggle"
-  },
-  "folderOrganization": "Organização de Pastas",
-  "@folderOrganization": {
-    "description": "Setting title - folder structure"
   },
   "folderOrganizationNone": "Nenhuma organização",
   "@folderOrganizationNone": {
@@ -1620,26 +1039,9 @@
   "@updateAvailable": {
     "description": "Update dialog title"
   },
-  "updateNewVersion": "A versão {version} está disponível",
-  "@updateNewVersion": {
-    "description": "Update available message",
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
-  "updateDownload": "Baixar",
-  "@updateDownload": {
-    "description": "Update button - download update"
-  },
   "updateLater": "Depois",
   "@updateLater": {
     "description": "Update button - dismiss"
-  },
-  "updateChangelog": "Lista de alterações",
-  "@updateChangelog": {
-    "description": "Link to changelog"
   },
   "updateStartingDownload": "Iniciando download...",
   "@updateStartingDownload": {
@@ -1681,14 +1083,6 @@
   "@updateDontRemind": {
     "description": "Update button - skip this version"
   },
-  "providerPriority": "Prioridade de Provedor",
-  "@providerPriority": {
-    "description": "Setting title - download provider order"
-  },
-  "providerPrioritySubtitle": "Arraste para reordenar os provedores de download",
-  "@providerPrioritySubtitle": {
-    "description": "Subtitle for provider priority"
-  },
   "providerPriorityTitle": "Prioridade de Provedor",
   "@providerPriorityTitle": {
     "description": "Provider priority page title"
@@ -1708,14 +1102,6 @@
   "providerExtension": "Extensão",
   "@providerExtension": {
     "description": "Label for extension-provided providers"
-  },
-  "metadataProviderPriority": "Prioridade de Provedor de Metadados",
-  "@metadataProviderPriority": {
-    "description": "Setting title - metadata provider order"
-  },
-  "metadataProviderPrioritySubtitle": "Ordem usada para obter metadados de faixa",
-  "@metadataProviderPrioritySubtitle": {
-    "description": "Subtitle for metadata priority"
   },
   "metadataProviderPriorityTitle": "Prioridade de Metadados",
   "@metadataProviderPriorityTitle": {
@@ -1740,22 +1126,6 @@
   "logTitle": "Registros",
   "@logTitle": {
     "description": "Logs screen title"
-  },
-  "logCopy": "Copiar Registros",
-  "@logCopy": {
-    "description": "Action - copy logs to clipboard"
-  },
-  "logClear": "Limpar Registros",
-  "@logClear": {
-    "description": "Action - delete all logs"
-  },
-  "logShare": "Compartilhar Registros",
-  "@logShare": {
-    "description": "Action - share logs file"
-  },
-  "logEmpty": "Ainda não há registros",
-  "@logEmpty": {
-    "description": "Empty state title"
   },
   "logCopied": "Registros copiados para área de transferência",
   "@logCopied": {
@@ -1789,22 +1159,6 @@
   "@logClearLogsMessage": {
     "description": "Clear logs confirmation message"
   },
-  "logIspBlocking": "BLOQUEIO DE ISP DETECTADO",
-  "@logIspBlocking": {
-    "description": "Error category - ISP blocking"
-  },
-  "logRateLimited": "TAXA LIMITADA (RATELIMITED)",
-  "@logRateLimited": {
-    "description": "Error category - rate limiting"
-  },
-  "logNetworkError": "ERRO DE REDE",
-  "@logNetworkError": {
-    "description": "Error category - network issues"
-  },
-  "logTrackNotFound": "FAIXA NÃO ENCONTRADA",
-  "@logTrackNotFound": {
-    "description": "Error category - missing tracks"
-  },
   "logFilterBySeverity": "Filtrar registros por gravidade",
   "@logFilterBySeverity": {
     "description": "Filter dialog title"
@@ -1816,60 +1170,6 @@
   "logNoLogsYetSubtitle": "Os registros aparecerão aqui enquanto você usa o aplicativo",
   "@logNoLogsYetSubtitle": {
     "description": "Empty state subtitle"
-  },
-  "logIssueSummary": "Resumo do Problemas",
-  "@logIssueSummary": {
-    "description": "Section header for error summary"
-  },
-  "logIspBlockingDescription": "O seu provedor pode estar bloqueando o acesso aos serviços de download",
-  "@logIspBlockingDescription": {
-    "description": "ISP blocking explanation"
-  },
-  "logIspBlockingSuggestion": "Tente usar uma VPN ou altere o DNS para 1.1.1 ou 8.8.8.8",
-  "@logIspBlockingSuggestion": {
-    "description": "ISP blocking fix suggestion"
-  },
-  "logRateLimitedDescription": "Muitas solicitações ao serviço",
-  "@logRateLimitedDescription": {
-    "description": "Rate limit explanation"
-  },
-  "logRateLimitedSuggestion": "Aguarde alguns minutos antes de tentar novamente",
-  "@logRateLimitedSuggestion": {
-    "description": "Rate limit fix suggestion"
-  },
-  "logNetworkErrorDescription": "Problemas de conexão detectados",
-  "@logNetworkErrorDescription": {
-    "description": "Network error explanation"
-  },
-  "logNetworkErrorSuggestion": "Verifique sua conexão de internet",
-  "@logNetworkErrorSuggestion": {
-    "description": "Network error fix suggestion"
-  },
-  "logTrackNotFoundDescription": "Algumas faixas não foram encontradas nos serviços de download",
-  "@logTrackNotFoundDescription": {
-    "description": "Track not found explanation"
-  },
-  "logTrackNotFoundSuggestion": "A faixa pode não estar disponível em qualidade sem perdas",
-  "@logTrackNotFoundSuggestion": {
-    "description": "Track not found explanation"
-  },
-  "logTotalErrors": "Total de erros: {count}",
-  "@logTotalErrors": {
-    "description": "Error count display",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "logAffected": "Afetado(s): {domains}",
-  "@logAffected": {
-    "description": "Affected domains display",
-    "placeholders": {
-      "domains": {
-        "type": "String"
-      }
-    }
   },
   "logEntriesFiltered": "Entradas ({count} filtradas)",
   "@logEntriesFiltered": {
@@ -2013,10 +1313,6 @@
   "@appearanceLanguage": {
     "description": "Language setting title"
   },
-  "appearanceLanguageSubtitle": "Escolha o seu idioma preferido",
-  "@appearanceLanguageSubtitle": {
-    "description": "Language setting subtitle"
-  },
   "settingsAppearanceSubtitle": "Tema, cores, exibição",
   "@settingsAppearanceSubtitle": {
     "description": "Appearance settings description"
@@ -2045,22 +1341,9 @@
   "@pressBackAgainToExit": {
     "description": "Exit confirmation message"
   },
-  "tracksHeader": "Faixas",
-  "@tracksHeader": {
-    "description": "Section header for track list"
-  },
   "downloadAllCount": "Baixar Todos ({count})",
   "@downloadAllCount": {
     "description": "Download all button with count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "playAllCount": "Play All ({count})",
-  "@playAllCount": {
-    "description": "Play all button with count",
     "placeholders": {
       "count": {
         "type": "int"
@@ -2204,15 +1487,6 @@
   "@trackDeleteConfirmMessage": {
     "description": "Delete confirmation message"
   },
-  "trackCannotOpen": "Não foi possível abrir: {message}",
-  "@trackCannotOpen": {
-    "description": "Error opening file",
-    "placeholders": {
-      "message": {
-        "type": "String"
-      }
-    }
-  },
   "dateToday": "Hoje",
   "@dateToday": {
     "description": "Relative date - today"
@@ -2248,22 +1522,6 @@
       }
     }
   },
-  "concurrentSequential": "Sequencial",
-  "@concurrentSequential": {
-    "description": "Download mode - one at a time"
-  },
-  "concurrentParallel2": "2 Paralelos",
-  "@concurrentParallel2": {
-    "description": "Download mode - 2 simultaneous"
-  },
-  "concurrentParallel3": "3 Paralelos",
-  "@concurrentParallel3": {
-    "description": "Download mode - 3 simultaneous"
-  },
-  "tapToSeeError": "Toque para ver os detalhes do erro",
-  "@tapToSeeError": {
-    "description": "Tooltip for failed download"
-  },
   "storeFilterAll": "Tudo",
   "@storeFilterAll": {
     "description": "Store filter - all extensions"
@@ -2291,18 +1549,6 @@
   "storeClearFilters": "Limpar filtros",
   "@storeClearFilters": {
     "description": "Button to clear all filters"
-  },
-  "storeNoResults": "Nenhuma extensão encontrada",
-  "@storeNoResults": {
-    "description": "Empty state when no extensions match filters"
-  },
-  "extensionProviderPriority": "Prioridade de Provedor",
-  "@extensionProviderPriority": {
-    "description": "Extension capability - provider priority"
-  },
-  "extensionInstallButton": "Instalar Extensão",
-  "@extensionInstallButton": {
-    "description": "Button to install extension"
   },
   "extensionDefaultProvider": "Padrão (Deezer/Spotify)",
   "@extensionDefaultProvider": {
@@ -2503,46 +1749,6 @@
   "@qualityHiResFlacMaxSubtitle": {
     "description": "Technical spec for hi-res max"
   },
-  "qualityLossy": "Lossy",
-  "@qualityLossy": {
-    "description": "Quality option - lossy format (MP3/Opus)"
-  },
-  "qualityLossyMp3Subtitle": "MP3 320kbps (converted from FLAC)",
-  "@qualityLossyMp3Subtitle": {
-    "description": "Technical spec for lossy MP3"
-  },
-  "qualityLossyOpusSubtitle": "Opus 128kbps (converted from FLAC)",
-  "@qualityLossyOpusSubtitle": {
-    "description": "Technical spec for lossy Opus"
-  },
-  "enableLossyOption": "Enable Lossy Option",
-  "@enableLossyOption": {
-    "description": "Setting - enable lossy quality option"
-  },
-  "enableLossyOptionSubtitleOn": "Lossy quality option is available",
-  "@enableLossyOptionSubtitleOn": {
-    "description": "Subtitle when lossy is enabled"
-  },
-  "enableLossyOptionSubtitleOff": "Downloads FLAC then converts to lossy format",
-  "@enableLossyOptionSubtitleOff": {
-    "description": "Subtitle when lossy is disabled"
-  },
-  "lossyFormat": "Lossy Format",
-  "@lossyFormat": {
-    "description": "Setting - choose lossy format"
-  },
-  "lossyFormatDescription": "Choose the lossy format for conversion",
-  "@lossyFormatDescription": {
-    "description": "Description for lossy format picker"
-  },
-  "lossyFormatMp3Subtitle": "320kbps, best compatibility",
-  "@lossyFormatMp3Subtitle": {
-    "description": "MP3 format description"
-  },
-  "lossyFormatOpusSubtitle": "128kbps, better quality at smaller size",
-  "@lossyFormatOpusSubtitle": {
-    "description": "Opus format description"
-  },
   "qualityNote": "A qualidade real depende da faixa que estiver disponível no serviço",
   "@qualityNote": {
     "description": "Note about quality availability"
@@ -2558,49 +1764,6 @@
   "youtubeMp3BitrateTitle": "YouTube MP3 Bitrate",
   "@youtubeMp3BitrateTitle": {
     "description": "Title for YouTube MP3 bitrate setting"
-  },
-  "youtubeBitrateSubtitle": "{bitrate}kbps ({min}-{max})",
-  "@youtubeBitrateSubtitle": {
-    "description": "Subtitle showing current bitrate and valid range",
-    "placeholders": {
-      "bitrate": {
-        "type": "int"
-      },
-      "min": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
-  },
-  "youtubeBitrateInputHelp": "Enter custom bitrate ({min}-{max} kbps)",
-  "@youtubeBitrateInputHelp": {
-    "description": "Helper text for manual YouTube bitrate input",
-    "placeholders": {
-      "min": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
-  },
-  "youtubeBitrateFieldLabel": "Bitrate (kbps)",
-  "@youtubeBitrateFieldLabel": {
-    "description": "Label for YouTube bitrate input field"
-  },
-  "youtubeBitrateValidationError": "Bitrate must be between {min} and {max} kbps",
-  "@youtubeBitrateValidationError": {
-    "description": "Validation error for invalid YouTube bitrate input",
-    "placeholders": {
-      "min": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
   },
   "downloadAskBeforeDownload": "Perguntar qualidade antes de baixar",
   "@downloadAskBeforeDownload": {
@@ -2622,14 +1785,6 @@
   "@downloadUseAlbumArtistForFolders": {
     "description": "Setting - choose whether artist folders use Album Artist or Track Artist"
   },
-  "downloadUseAlbumArtistForFoldersAlbumSubtitle": "Artist folders use Album Artist when available",
-  "@downloadUseAlbumArtistForFoldersAlbumSubtitle": {
-    "description": "Subtitle when Album Artist is used for folder naming"
-  },
-  "downloadUseAlbumArtistForFoldersTrackSubtitle": "Artist folders use Track Artist only",
-  "@downloadUseAlbumArtistForFoldersTrackSubtitle": {
-    "description": "Subtitle when Track Artist is used for folder naming"
-  },
   "downloadUsePrimaryArtistOnly": "Primary artist only for folders",
   "@downloadUsePrimaryArtistOnly": {
     "description": "Setting - strip featured artists from folder name"
@@ -2642,14 +1797,6 @@
   "@downloadUsePrimaryArtistOnlyDisabled": {
     "description": "Subtitle when primary artist only is disabled"
   },
-  "downloadSaveFormat": "Formato para Salvar",
-  "@downloadSaveFormat": {
-    "description": "Setting - output file format"
-  },
-  "downloadSelectService": "Selecionar Serviço",
-  "@downloadSelectService": {
-    "description": "Dialog title - choose download service"
-  },
   "downloadSelectQuality": "Selecionar Qualidade",
   "@downloadSelectQuality": {
     "description": "Dialog title - choose audio quality"
@@ -2657,66 +1804,6 @@
   "downloadFrom": "Baixar De",
   "@downloadFrom": {
     "description": "Label - download source"
-  },
-  "downloadDefaultQualityLabel": "Qualidade Padrão",
-  "@downloadDefaultQualityLabel": {
-    "description": "Label - default quality setting"
-  },
-  "downloadBestAvailable": "Melhor Disponível",
-  "@downloadBestAvailable": {
-    "description": "Quality option - highest available"
-  },
-  "folderNone": "Nenhuma",
-  "@folderNone": {
-    "description": "Folder option - no organization"
-  },
-  "folderNoneSubtitle": "Salvar todos os arquivos diretamente na pasta de download",
-  "@folderNoneSubtitle": {
-    "description": "Subtitle for no folder organization"
-  },
-  "folderArtist": "Artista",
-  "@folderArtist": {
-    "description": "Folder option - by artist"
-  },
-  "folderArtistSubtitle": "Nome do Artista/arquivo",
-  "@folderArtistSubtitle": {
-    "description": "Folder structure example"
-  },
-  "folderAlbum": "Álbum",
-  "@folderAlbum": {
-    "description": "Folder option - by album"
-  },
-  "folderAlbumSubtitle": "Nome do Álbum/arquivo",
-  "@folderAlbumSubtitle": {
-    "description": "Folder structure example"
-  },
-  "folderArtistAlbum": "Artista/Álbum",
-  "@folderArtistAlbum": {
-    "description": "Folder option - nested"
-  },
-  "folderArtistAlbumSubtitle": "Nome do Artista/Nome do Álbum/arquivo",
-  "@folderArtistAlbumSubtitle": {
-    "description": "Folder structure example"
-  },
-  "serviceTidal": "Tidal",
-  "@serviceTidal": {
-    "description": "Service name - DO NOT TRANSLATE"
-  },
-  "serviceQobuz": "Qobuz",
-  "@serviceQobuz": {
-    "description": "Service name - DO NOT TRANSLATE"
-  },
-  "serviceAmazon": "Amazon",
-  "@serviceAmazon": {
-    "description": "Service name - DO NOT TRANSLATE"
-  },
-  "serviceDeezer": "Deezer",
-  "@serviceDeezer": {
-    "description": "Service name - DO NOT TRANSLATE"
-  },
-  "serviceSpotify": "Spotify",
-  "@serviceSpotify": {
-    "description": "Service name - DO NOT TRANSLATE"
   },
   "appearanceAmoledDark": "Escuro AMOLED",
   "@appearanceAmoledDark": {
@@ -2726,18 +1813,6 @@
   "@appearanceAmoledDarkSubtitle": {
     "description": "Subtitle for AMOLED dark"
   },
-  "appearanceChooseAccentColor": "Escolha a Cor de Destaque",
-  "@appearanceChooseAccentColor": {
-    "description": "Color picker dialog title"
-  },
-  "appearanceChooseTheme": "Modo do Tema",
-  "@appearanceChooseTheme": {
-    "description": "Theme picker dialog title"
-  },
-  "queueTitle": "Fila de Download",
-  "@queueTitle": {
-    "description": "Queue screen title"
-  },
   "queueClearAll": "Limpar Tudo",
   "@queueClearAll": {
     "description": "Button - clear all queue items"
@@ -2745,22 +1820,6 @@
   "queueClearAllMessage": "Você tem certeza que deseja limpar todos os downloads?",
   "@queueClearAllMessage": {
     "description": "Clear queue confirmation"
-  },
-  "queueExportFailed": "Export",
-  "@queueExportFailed": {
-    "description": "Button - export failed downloads to TXT"
-  },
-  "queueExportFailedSuccess": "Failed downloads exported to TXT file",
-  "@queueExportFailedSuccess": {
-    "description": "Success message after exporting failed downloads"
-  },
-  "queueExportFailedClear": "Clear Failed",
-  "@queueExportFailedClear": {
-    "description": "Action to clear failed downloads after export"
-  },
-  "queueExportFailedError": "Failed to export downloads",
-  "@queueExportFailedError": {
-    "description": "Error message when export fails"
   },
   "settingsAutoExportFailed": "Auto-export failed downloads",
   "@settingsAutoExportFailed": {
@@ -2785,38 +1844,6 @@
   "settingsDownloadNetworkSubtitle": "Choose which network to use for downloads. When set to WiFi Only, downloads will pause on mobile data.",
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
-  },
-  "queueEmpty": "Nenhum download na fila",
-  "@queueEmpty": {
-    "description": "Empty queue state title"
-  },
-  "queueEmptySubtitle": "Adicione faixas a partir da tela inicial",
-  "@queueEmptySubtitle": {
-    "description": "Empty queue state subtitle"
-  },
-  "queueClearCompleted": "Limpar concluídos",
-  "@queueClearCompleted": {
-    "description": "Button - clear finished downloads"
-  },
-  "queueDownloadFailed": "Download Falhou",
-  "@queueDownloadFailed": {
-    "description": "Error dialog title"
-  },
-  "queueTrackLabel": "Faixa:",
-  "@queueTrackLabel": {
-    "description": "Label in error dialog"
-  },
-  "queueArtistLabel": "Artista:",
-  "@queueArtistLabel": {
-    "description": "Label in error dialog"
-  },
-  "queueErrorLabel": "Erro:",
-  "@queueErrorLabel": {
-    "description": "Label in error dialog"
-  },
-  "queueUnknownError": "Erro desconhecido",
-  "@queueUnknownError": {
-    "description": "Fallback error message"
   },
   "albumFolderArtistAlbum": "Artista / Álbum",
   "@albumFolderArtistAlbum": {
@@ -2871,19 +1898,6 @@
       }
     }
   },
-  "downloadedAlbumTracksHeader": "Faixas",
-  "@downloadedAlbumTracksHeader": {
-    "description": "Section header for tracks"
-  },
-  "downloadedAlbumDownloadedCount": "{count} baixado(s)",
-  "@downloadedAlbumDownloadedCount": {
-    "description": "Downloaded tracks count badge",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "downloadedAlbumSelectedCount": "{count} selecionado(s)",
   "@downloadedAlbumSelectedCount": {
     "description": "Selection count indicator",
@@ -2924,10 +1938,6 @@
       }
     }
   },
-  "utilityFunctions": "Funções Utilitárias",
-  "@utilityFunctions": {
-    "description": "Extension capability - utility functions"
-  },
   "recentTypeArtist": "Artista",
   "@recentTypeArtist": {
     "description": "Recent access item type - artist"
@@ -2962,31 +1972,13 @@
       }
     }
   },
-  "errorGeneric": "Erro: {message}",
-  "@errorGeneric": {
-    "description": "Generic error message format",
-    "placeholders": {
-      "message": {
-        "type": "String",
-        "description": "Error message"
-      }
-    }
-  },
   "discographyDownload": "Baixar Discografia",
   "@discographyDownload": {
     "description": "Button - download artist discography"
   },
-  "discographyPlay": "Play Discography",
-  "@discographyPlay": {
-    "description": "Button - play artist discography"
-  },
   "discographyDownloadAll": "Baixar Tudo",
   "@discographyDownloadAll": {
     "description": "Option - download entire discography"
-  },
-  "discographyPlayAll": "Play All",
-  "@discographyPlayAll": {
-    "description": "Option - play entire discography"
   },
   "discographyDownloadAllSubtitle": "{count} faixas de {albumCount} lançamentos",
   "@discographyDownloadAllSubtitle": {
@@ -3069,10 +2061,6 @@
   "@discographyDownloadSelected": {
     "description": "Button - download selected albums"
   },
-  "discographyPlaySelected": "Play Selected",
-  "@discographyPlaySelected": {
-    "description": "Button - play selected albums"
-  },
   "discographyAddedToQueue": "{count} faixas adicionadas à fila",
   "@discographyAddedToQueue": {
     "description": "Snackbar - tracks added from discography",
@@ -3150,10 +2138,6 @@
   "@libraryTitle": {
     "description": "Library settings page title"
   },
-  "libraryStatus": "Library Status",
-  "@libraryStatus": {
-    "description": "Section header for library status"
-  },
   "libraryScanSettings": "Scan Settings",
   "@libraryScanSettings": {
     "description": "Section header for scan settings"
@@ -3229,15 +2213,6 @@
   "libraryAboutDescription": "Scans your existing music collection to detect duplicates when downloading. Supports FLAC, M4A, MP3, Opus, and OGG formats. Metadata is read from file tags when available.",
   "@libraryAboutDescription": {
     "description": "Description of local library feature"
-  },
-  "libraryTracksCount": "{count} tracks",
-  "@libraryTracksCount": {
-    "description": "Track count in library",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "libraryTracksUnit": "{count, plural, =1{track} other{tracks}}",
   "@libraryTracksUnit": {
@@ -3362,26 +2337,6 @@
   "@libraryFilterFormat": {
     "description": "Filter section - file format"
   },
-  "libraryFilterDate": "Date Added",
-  "@libraryFilterDate": {
-    "description": "Filter section - date range"
-  },
-  "libraryFilterDateToday": "Today",
-  "@libraryFilterDateToday": {
-    "description": "Filter option - today only"
-  },
-  "libraryFilterDateWeek": "This Week",
-  "@libraryFilterDateWeek": {
-    "description": "Filter option - this week"
-  },
-  "libraryFilterDateMonth": "This Month",
-  "@libraryFilterDateMonth": {
-    "description": "Filter option - this month"
-  },
-  "libraryFilterDateYear": "This Year",
-  "@libraryFilterDateYear": {
-    "description": "Filter option - this year"
-  },
   "libraryFilterSort": "Sort",
   "@libraryFilterSort": {
     "description": "Filter section - sort order"
@@ -3393,15 +2348,6 @@
   "libraryFilterSortOldest": "Oldest",
   "@libraryFilterSortOldest": {
     "description": "Sort option - oldest first"
-  },
-  "libraryFilterActive": "{count} filter(s) active",
-  "@libraryFilterActive": {
-    "description": "Badge showing number of active filters",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "timeJustNow": "Just now",
   "@timeJustNow": {
@@ -3424,106 +2370,6 @@
         "type": "int"
       }
     }
-  },
-  "storageSwitchTitle": "Switch Storage Mode",
-  "@storageSwitchTitle": {
-    "description": "Dialog title when switching storage mode"
-  },
-  "storageSwitchToSafTitle": "Switch to SAF Storage?",
-  "@storageSwitchToSafTitle": {
-    "description": "Dialog title when switching to SAF"
-  },
-  "storageSwitchToAppTitle": "Switch to App Storage?",
-  "@storageSwitchToAppTitle": {
-    "description": "Dialog title when switching to app storage"
-  },
-  "storageSwitchToSafMessage": "Your existing downloads will remain in the current location and stay accessible.\n\nNew downloads will be saved to your selected SAF folder.",
-  "@storageSwitchToSafMessage": {
-    "description": "Explanation when switching to SAF"
-  },
-  "storageSwitchToAppMessage": "Your existing downloads will remain in the current SAF location and stay accessible.\n\nNew downloads will be saved to Music/SpotiFLAC folder.",
-  "@storageSwitchToAppMessage": {
-    "description": "Explanation when switching to app storage"
-  },
-  "storageSwitchExistingDownloads": "Existing Downloads",
-  "@storageSwitchExistingDownloads": {
-    "description": "Section header for existing downloads info"
-  },
-  "storageSwitchExistingDownloadsInfo": "{count} tracks in {mode} storage",
-  "@storageSwitchExistingDownloadsInfo": {
-    "description": "Info about existing downloads count",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "mode": {
-        "type": "String"
-      }
-    }
-  },
-  "storageSwitchNewDownloads": "New Downloads",
-  "@storageSwitchNewDownloads": {
-    "description": "Section header for new downloads info"
-  },
-  "storageSwitchNewDownloadsLocation": "Will be saved to: {location}",
-  "@storageSwitchNewDownloadsLocation": {
-    "description": "Shows where new downloads will go",
-    "placeholders": {
-      "location": {
-        "type": "String"
-      }
-    }
-  },
-  "storageSwitchContinue": "Continue",
-  "@storageSwitchContinue": {
-    "description": "Button to proceed with storage switch"
-  },
-  "storageSwitchSelectFolder": "Select SAF Folder",
-  "@storageSwitchSelectFolder": {
-    "description": "Button to select SAF folder"
-  },
-  "storageAppStorage": "App Storage",
-  "@storageAppStorage": {
-    "description": "Label for app storage mode"
-  },
-  "storageSafStorage": "SAF Storage",
-  "@storageSafStorage": {
-    "description": "Label for SAF storage mode"
-  },
-  "storageModeBadge": "Storage: {mode}",
-  "@storageModeBadge": {
-    "description": "Badge showing storage mode for a track",
-    "placeholders": {
-      "mode": {
-        "type": "String"
-      }
-    }
-  },
-  "storageStatsTitle": "Storage Statistics",
-  "@storageStatsTitle": {
-    "description": "Section title for storage stats"
-  },
-  "storageStatsAppCount": "{count} tracks in App Storage",
-  "@storageStatsAppCount": {
-    "description": "Count of tracks in app storage",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "storageStatsSafCount": "{count} tracks in SAF Storage",
-  "@storageStatsSafCount": {
-    "description": "Count of tracks in SAF storage",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "storageModeInfo": "Your files are stored in multiple locations",
-  "@storageModeInfo": {
-    "description": "Info when user has files in both storage modes"
   },
   "tutorialWelcomeTitle": "Welcome to SpotiFLAC!",
   "@tutorialWelcomeTitle": {
@@ -3553,18 +2399,6 @@
   "@tutorialSearchDesc": {
     "description": "Tutorial search page description"
   },
-  "tutorialSearchTip1": "Paste a Spotify or Deezer URL directly in the search box",
-  "@tutorialSearchTip1": {
-    "description": "Tutorial search tip 1"
-  },
-  "tutorialSearchTip2": "Or type the song name, artist, or album to search",
-  "@tutorialSearchTip2": {
-    "description": "Tutorial search tip 2"
-  },
-  "tutorialSearchTip3": "Supports tracks, albums, playlists, and artist pages",
-  "@tutorialSearchTip3": {
-    "description": "Tutorial search tip 3"
-  },
   "tutorialDownloadTitle": "Downloading Music",
   "@tutorialDownloadTitle": {
     "description": "Tutorial download page title"
@@ -3572,18 +2406,6 @@
   "tutorialDownloadDesc": "Downloading music is simple and fast. Here's how it works.",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
-  },
-  "tutorialDownloadTip1": "Tap the download button next to any track to start downloading",
-  "@tutorialDownloadTip1": {
-    "description": "Tutorial download tip 1"
-  },
-  "tutorialDownloadTip2": "Choose your preferred quality (FLAC, Hi-Res, or MP3)",
-  "@tutorialDownloadTip2": {
-    "description": "Tutorial download tip 2"
-  },
-  "tutorialDownloadTip3": "Download entire albums or playlists with one tap",
-  "@tutorialDownloadTip3": {
-    "description": "Tutorial download tip 3"
   },
   "tutorialLibraryTitle": "Your Library",
   "@tutorialLibraryTitle": {
@@ -3648,10 +2470,6 @@
   "tutorialReadyMessage": "You're all set! Start downloading your favorite music now.",
   "@tutorialReadyMessage": {
     "description": "Tutorial completion message"
-  },
-  "tutorialExample": "EXAMPLE",
-  "@tutorialExample": {
-    "description": "Example label in tutorial"
   },
   "libraryForceFullScan": "Force Full Scan",
   "@libraryForceFullScan": {
@@ -3878,10 +2696,6 @@
   "trackReEnrich": "Re-enrich",
   "@trackReEnrich": {
     "description": "Menu action - re-embed metadata into audio file"
-  },
-  "trackReEnrichSubtitle": "Re-embed metadata without re-downloading",
-  "@trackReEnrichSubtitle": {
-    "description": "Subtitle for re-enrich metadata action"
   },
   "trackReEnrichOnlineSubtitle": "Search metadata online and embed into file",
   "@trackReEnrichOnlineSubtitle": {
@@ -4271,48 +3085,21 @@
       }
     }
   },
-  "setupModeSelectionTitle": "Choose Your Mode",
-  "@setupModeSelectionTitle": {
-    "description": "Title for mode selection step in setup wizard"
+  "downloadedAlbumDownloadedCount": "{count} baixado(s)",
+  "@downloadedAlbumDownloadedCount": {
+    "description": "Downloaded tracks count badge",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
-  "setupModeSelectionDescription": "How would you like to use SpotiFLAC? You can always change this later in Settings.",
-  "@setupModeSelectionDescription": {
-    "description": "Description for mode selection step"
+  "downloadUseAlbumArtistForFoldersAlbumSubtitle": "Artist folders use Album Artist when available",
+  "@downloadUseAlbumArtistForFoldersAlbumSubtitle": {
+    "description": "Subtitle when Album Artist is used for folder naming"
   },
-  "setupModeDownloaderTitle": "Downloader",
-  "@setupModeDownloaderTitle": {
-    "description": "Title for downloader mode option"
-  },
-  "setupModeDownloaderFeature1": "Download tracks in lossless FLAC quality",
-  "@setupModeDownloaderFeature1": {
-    "description": "Downloader mode feature 1"
-  },
-  "setupModeDownloaderFeature2": "Save music to your device for offline listening",
-  "@setupModeDownloaderFeature2": {
-    "description": "Downloader mode feature 2"
-  },
-  "setupModeDownloaderFeature3": "Manage your local music library",
-  "@setupModeDownloaderFeature3": {
-    "description": "Downloader mode feature 3"
-  },
-  "setupModeStreamingTitle": "Streaming",
-  "@setupModeStreamingTitle": {
-    "description": "Title for streaming mode option"
-  },
-  "setupModeStreamingFeature1": "Stream tracks instantly without downloading",
-  "@setupModeStreamingFeature1": {
-    "description": "Streaming mode feature 1"
-  },
-  "setupModeStreamingFeature2": "Smart Queue auto-discovers new music for you",
-  "@setupModeStreamingFeature2": {
-    "description": "Streaming mode feature 2"
-  },
-  "setupModeStreamingFeature3": "Play any track on demand with playback controls",
-  "@setupModeStreamingFeature3": {
-    "description": "Streaming mode feature 3"
-  },
-  "setupModeChangeableLater": "You can switch between modes anytime in Settings.",
-  "@setupModeChangeableLater": {
-    "description": "Hint that mode can be changed later"
+  "downloadUseAlbumArtistForFoldersTrackSubtitle": "Artist folders use Track Artist only",
+  "@downloadUseAlbumArtistForFoldersTrackSubtitle": {
+    "description": "Subtitle when Track Artist is used for folder naming"
   }
 }
