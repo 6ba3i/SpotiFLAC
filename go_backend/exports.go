@@ -1156,8 +1156,87 @@ func GetDeezerMetadata(resourceType, resourceID string) (string, error) {
 	return string(jsonBytes), nil
 }
 
+func GetQobuzMetadata(resourceType, resourceID string) (string, error) {
+	downloader := NewQobuzDownloader()
+
+	var data interface{}
+	var err error
+
+	switch resourceType {
+	case "track":
+		data, err = downloader.GetTrackMetadata(resourceID)
+	case "album":
+		data, err = downloader.GetAlbumMetadata(resourceID)
+	case "artist":
+		data, err = downloader.GetArtistMetadata(resourceID)
+	case "playlist":
+		data, err = downloader.GetPlaylistMetadata(resourceID)
+	default:
+		return "", fmt.Errorf("unsupported Qobuz resource type: %s", resourceType)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonBytes), nil
+}
+
+func GetTidalMetadata(resourceType, resourceID string) (string, error) {
+	downloader := NewTidalDownloader()
+
+	var data interface{}
+	var err error
+
+	switch resourceType {
+	case "track":
+		data, err = downloader.GetTrackMetadata(resourceID)
+	case "album":
+		data, err = downloader.GetAlbumMetadata(resourceID)
+	case "artist":
+		data, err = downloader.GetArtistMetadata(resourceID)
+	case "playlist":
+		data, err = downloader.GetPlaylistMetadata(resourceID)
+	default:
+		return "", fmt.Errorf("unsupported Tidal resource type: %s", resourceType)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonBytes), nil
+}
+
 func ParseDeezerURLExport(url string) (string, error) {
 	resourceType, resourceID, err := parseDeezerURL(url)
+	if err != nil {
+		return "", err
+	}
+
+	result := map[string]string{
+		"type": resourceType,
+		"id":   resourceID,
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonBytes), nil
+}
+
+func ParseQobuzURLExport(url string) (string, error) {
+	resourceType, resourceID, err := parseQobuzURL(url)
 	if err != nil {
 		return "", err
 	}
@@ -1311,7 +1390,6 @@ func ConvertSpotifyToDeezer(resourceType, spotifyID string) (string, error) {
 		return string(jsonBytes), nil
 	}
 
-	// For artists/playlists, SongLink doesn't provide direct mapping
 	return "", fmt.Errorf("Spotify to Deezer conversion only supported for tracks and albums. Please search by name for %s", resourceType)
 }
 

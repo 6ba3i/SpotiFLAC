@@ -383,10 +383,33 @@ import Gobackend  // Import Go framework
             if let error = error { throw error }
             return response
 
+        case "getQobuzMetadata":
+            let args = call.arguments as! [String: Any]
+            let resourceType = args["resource_type"] as! String
+            let resourceId = args["resource_id"] as! String
+            let response = GobackendGetQobuzMetadata(resourceType, resourceId, &error)
+            if let error = error { throw error }
+            return response
+
+        case "getTidalMetadata":
+            let args = call.arguments as! [String: Any]
+            let resourceType = args["resource_type"] as! String
+            let resourceId = args["resource_id"] as! String
+            let response = GobackendGetTidalMetadata(resourceType, resourceId, &error)
+            if let error = error { throw error }
+            return response
+
         case "parseDeezerUrl":
             let args = call.arguments as! [String: Any]
             let url = args["url"] as! String
             let response = GobackendParseDeezerURLExport(url, &error)
+            if let error = error { throw error }
+            return response
+
+        case "parseQobuzUrl":
+            let args = call.arguments as! [String: Any]
+            let url = args["url"] as! String
+            let response = GobackendParseQobuzURLExport(url, &error)
             if let error = error { throw error }
             return response
 

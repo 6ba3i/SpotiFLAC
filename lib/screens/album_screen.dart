@@ -84,7 +84,12 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
       // Use extensionId if available, otherwise detect from albumId prefix
       final providerId =
           widget.extensionId ??
-          (widget.albumId.startsWith('deezer:') ? 'deezer' : 'spotify');
+          (() {
+            if (widget.albumId.startsWith('deezer:')) return 'deezer';
+            if (widget.albumId.startsWith('qobuz:')) return 'qobuz';
+            if (widget.albumId.startsWith('tidal:')) return 'tidal';
+            return 'spotify';
+          })();
       ref
           .read(recentAccessProvider.notifier)
           .recordAlbumAccess(
@@ -175,6 +180,12 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
           'album',
           deezerAlbumId,
         );
+      } else if (widget.albumId.startsWith('qobuz:')) {
+        final qobuzAlbumId = widget.albumId.replaceFirst('qobuz:', '');
+        metadata = await PlatformBridge.getQobuzMetadata('album', qobuzAlbumId);
+      } else if (widget.albumId.startsWith('tidal:')) {
+        final tidalAlbumId = widget.albumId.replaceFirst('tidal:', '');
+        metadata = await PlatformBridge.getTidalMetadata('album', tidalAlbumId);
       } else {
         final url = 'https://open.spotify.com/album/${widget.albumId}';
         metadata = await PlatformBridge.getSpotifyMetadataWithFallback(url);
@@ -619,7 +630,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
           size: 22,
           color: allLoved ? Colors.redAccent : Colors.white,
         ),
-        tooltip: allLoved ? context.l10n.trackOptionRemoveFromLoved : context.l10n.tooltipLoveAll,
+        tooltip: allLoved
+            ? context.l10n.trackOptionRemoveFromLoved
+            : context.l10n.tooltipLoveAll,
         padding: EdgeInsets.zero,
       ),
     );
@@ -678,9 +691,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              context.l10n.snackbarAddedTracksToLoved(addedCount),
-            ),
+            content: Text(context.l10n.snackbarAddedTracksToLoved(addedCount)),
           ),
         );
       }

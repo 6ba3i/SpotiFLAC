@@ -3605,10 +3605,26 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
             ? trackToDownload.discNumber!
             : 1;
 
+        String payloadSpotifyId = trackToDownload.id;
+        String payloadQobuzId = '';
+        String payloadTidalId = '';
+        if (trackToDownload.id.startsWith('qobuz:')) {
+          payloadQobuzId = trackToDownload.id.substring(6);
+          if (item.service == 'qobuz') {
+            payloadSpotifyId = '';
+          }
+        }
+        if (trackToDownload.id.startsWith('tidal:')) {
+          payloadTidalId = trackToDownload.id.substring(6);
+          if (item.service == 'tidal') {
+            payloadSpotifyId = '';
+          }
+        }
+
         final payload = DownloadRequestPayload(
           isrc: trackToDownload.isrc ?? '',
           service: item.service,
-          spotifyId: trackToDownload.id,
+          spotifyId: payloadSpotifyId,
           trackName: trackToDownload.name,
           artistName: trackToDownload.artistName,
           albumName: trackToDownload.albumName,
@@ -3632,6 +3648,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           genre: genre ?? '',
           label: label ?? '',
           copyright: copyright ?? '',
+          qobuzId: payloadQobuzId,
+          tidalId: payloadTidalId,
           deezerId: deezerTrackId ?? '',
           lyricsMode: settings.lyricsMode,
           storageMode: storageMode,

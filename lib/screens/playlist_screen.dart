@@ -65,16 +65,20 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     });
 
     try {
-      // Extract numeric ID from "deezer:123" format
       String playlistId = widget.playlistId!;
+      late final Map<String, dynamic> result;
       if (playlistId.startsWith('deezer:')) {
         playlistId = playlistId.substring(7);
+        result = await PlatformBridge.getDeezerMetadata('playlist', playlistId);
+      } else if (playlistId.startsWith('qobuz:')) {
+        playlistId = playlistId.substring(6);
+        result = await PlatformBridge.getQobuzMetadata('playlist', playlistId);
+      } else if (playlistId.startsWith('tidal:')) {
+        playlistId = playlistId.substring(6);
+        result = await PlatformBridge.getTidalMetadata('playlist', playlistId);
+      } else {
+        result = await PlatformBridge.getDeezerMetadata('playlist', playlistId);
       }
-
-      final result = await PlatformBridge.getDeezerMetadata(
-        'playlist',
-        playlistId,
-      );
       if (!mounted) return;
 
       // Go backend returns 'track_list' not 'tracks'
@@ -416,7 +420,12 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         onSelect: (quality, service) {
           ref
               .read(downloadQueueProvider.notifier)
-              .addToQueue(track, service, qualityOverride: quality, playlistName: widget.playlistName);
+              .addToQueue(
+                track,
+                service,
+                qualityOverride: quality,
+                playlistName: widget.playlistName,
+              );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(context.l10n.snackbarAddedToQueue(track.name)),
@@ -427,7 +436,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     } else {
       ref
           .read(downloadQueueProvider.notifier)
-          .addToQueue(track, settings.defaultService, playlistName: widget.playlistName);
+          .addToQueue(
+            track,
+            settings.defaultService,
+            playlistName: widget.playlistName,
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
       );
@@ -482,7 +495,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           size: 22,
           color: allLoved ? Colors.redAccent : Colors.white,
         ),
-        tooltip: allLoved ? context.l10n.trackOptionRemoveFromLoved : context.l10n.tooltipLoveAll,
+        tooltip: allLoved
+            ? context.l10n.trackOptionRemoveFromLoved
+            : context.l10n.tooltipLoveAll,
         padding: EdgeInsets.zero,
       ),
     );
@@ -570,9 +585,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              context.l10n.snackbarAddedTracksToLoved(addedCount),
-            ),
+            content: Text(context.l10n.snackbarAddedTracksToLoved(addedCount)),
           ),
         );
       }
@@ -594,7 +607,12 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         onSelect: (quality, service) {
           ref
               .read(downloadQueueProvider.notifier)
-              .addMultipleToQueue(tracks, service, qualityOverride: quality, playlistName: widget.playlistName);
+              .addMultipleToQueue(
+                tracks,
+                service,
+                qualityOverride: quality,
+                playlistName: widget.playlistName,
+              );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -607,7 +625,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     } else {
       ref
           .read(downloadQueueProvider.notifier)
-          .addMultipleToQueue(tracks, settings.defaultService, playlistName: widget.playlistName);
+          .addMultipleToQueue(
+            tracks,
+            settings.defaultService,
+            playlistName: widget.playlistName,
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.snackbarAddedTracksToQueue(tracks.length)),

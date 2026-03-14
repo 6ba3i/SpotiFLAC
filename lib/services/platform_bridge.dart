@@ -535,8 +535,45 @@ class PlatformBridge {
     return jsonDecode(result as String) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> getQobuzMetadata(
+    String resourceType,
+    String resourceId,
+  ) async {
+    final result = await _channel.invokeMethod('getQobuzMetadata', {
+      'resource_type': resourceType,
+      'resource_id': resourceId,
+    });
+    if (result == null) {
+      throw Exception(
+        'getQobuzMetadata returned null for $resourceType:$resourceId',
+      );
+    }
+    return jsonDecode(result as String) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> parseQobuzUrl(String url) async {
+    final result = await _channel.invokeMethod('parseQobuzUrl', {'url': url});
+    return jsonDecode(result as String) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> parseTidalUrl(String url) async {
     final result = await _channel.invokeMethod('parseTidalUrl', {'url': url});
+    return jsonDecode(result as String) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getTidalMetadata(
+    String resourceType,
+    String resourceId,
+  ) async {
+    final result = await _channel.invokeMethod('getTidalMetadata', {
+      'resource_type': resourceType,
+      'resource_id': resourceId,
+    });
+    if (result == null) {
+      throw Exception(
+        'getTidalMetadata returned null for $resourceType:$resourceId',
+      );
+    }
     return jsonDecode(result as String) as Map<String, dynamic>;
   }
 
@@ -1193,7 +1230,9 @@ class PlatformBridge {
 
   static Future<void> setStoreRegistryUrl(String registryUrl) async {
     _log.d('setStoreRegistryUrl: $registryUrl');
-    await _channel.invokeMethod('setStoreRegistryUrl', {'registry_url': registryUrl});
+    await _channel.invokeMethod('setStoreRegistryUrl', {
+      'registry_url': registryUrl,
+    });
   }
 
   static Future<String> getStoreRegistryUrl() async {

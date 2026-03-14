@@ -1122,7 +1122,6 @@ class MainActivity: FlutterFragmentActivity() {
             var tempCuePath: String? = null
             var tempAudioPath: String? = null
             try {
-                // Copy CUE to temp
                 tempCuePath = copyUriToTemp(cueDoc.uri, ".cue")
                 if (tempCuePath == null) {
                     errors++
@@ -1131,10 +1130,8 @@ class MainActivity: FlutterFragmentActivity() {
                     continue
                 }
 
-                // Extract the audio filename from the CUE sheet text
                 val audioFileName = extractCueAudioFileName(tempCuePath)
 
-                // Find the referenced audio file as a sibling in the same SAF directory
                 val audioDoc = resolveCueAudioSibling(
                     parentDir = parentDir,
                     cueName = cueName,
@@ -1176,7 +1173,6 @@ class MainActivity: FlutterFragmentActivity() {
 
                 val cueLastModified = try { cueDoc.lastModified() } catch (_: Exception) { 0L }
 
-                // Call Go to produce library scan entries for each CUE track
                 val cueResultsJson = Gobackend.scanCueSheetForLibrary(
                     tempCuePath,
                     tempDir,
@@ -2624,10 +2620,33 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
+                        "getQobuzMetadata" -> {
+                            val resourceType = call.argument<String>("resource_type") ?: ""
+                            val resourceId = call.argument<String>("resource_id") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                Gobackend.getQobuzMetadata(resourceType, resourceId)
+                            }
+                            result.success(response)
+                        }
+                        "getTidalMetadata" -> {
+                            val resourceType = call.argument<String>("resource_type") ?: ""
+                            val resourceId = call.argument<String>("resource_id") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                Gobackend.getTidalMetadata(resourceType, resourceId)
+                            }
+                            result.success(response)
+                        }
                         "parseDeezerUrl" -> {
                             val url = call.argument<String>("url") ?: ""
                             val response = withContext(Dispatchers.IO) {
                                 Gobackend.parseDeezerURLExport(url)
+                            }
+                            result.success(response)
+                        }
+                        "parseQobuzUrl" -> {
+                            val url = call.argument<String>("url") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                Gobackend.parseQobuzURLExport(url)
                             }
                             result.success(response)
                         }

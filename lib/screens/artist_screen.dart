@@ -153,7 +153,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final providerId =
           widget.extensionId ??
-          (widget.artistId.startsWith('deezer:') ? 'deezer' : 'spotify');
+          (() {
+            if (widget.artistId.startsWith('deezer:')) return 'deezer';
+            if (widget.artistId.startsWith('qobuz:')) return 'qobuz';
+            if (widget.artistId.startsWith('tidal:')) return 'tidal';
+            return 'spotify';
+          })();
       ref
           .read(recentAccessProvider.notifier)
           .recordArtistAccess(
@@ -230,6 +235,30 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         albums = albumsList
             .map((a) => _parseArtistAlbum(a as Map<String, dynamic>))
             .toList();
+      } else if (widget.artistId.startsWith('qobuz:')) {
+        final qobuzArtistId = widget.artistId.replaceFirst('qobuz:', '');
+        final metadata = await PlatformBridge.getQobuzMetadata(
+          'artist',
+          qobuzArtistId,
+        );
+        final albumsList = metadata['albums'] as List<dynamic>;
+        albums = albumsList
+            .map((a) => _parseArtistAlbum(a as Map<String, dynamic>))
+            .toList();
+        final artistInfo = metadata['artist_info'] as Map<String, dynamic>?;
+        headerImage = artistInfo?['images'] as String?;
+      } else if (widget.artistId.startsWith('tidal:')) {
+        final tidalArtistId = widget.artistId.replaceFirst('tidal:', '');
+        final metadata = await PlatformBridge.getTidalMetadata(
+          'artist',
+          tidalArtistId,
+        );
+        final albumsList = metadata['albums'] as List<dynamic>;
+        albums = albumsList
+            .map((a) => _parseArtistAlbum(a as Map<String, dynamic>))
+            .toList();
+        final artistInfo = metadata['artist_info'] as Map<String, dynamic>?;
+        headerImage = artistInfo?['images'] as String?;
       } else {
         final url = 'https://open.spotify.com/artist/${widget.artistId}';
         final result = await PlatformBridge.handleURLWithExtension(url);
@@ -959,6 +988,24 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         final tracksList = metadata['tracks'] as List<dynamic>;
         return tracksList
             .map((t) => _parseTrackFromDeezer(t as Map<String, dynamic>, album))
+            .toList();
+      }
+    } else if (album.id.startsWith('qobuz:')) {
+      final qobuzId = album.id.replaceFirst('qobuz:', '');
+      final metadata = await PlatformBridge.getQobuzMetadata('album', qobuzId);
+      if (metadata['track_list'] != null) {
+        final tracksList = metadata['track_list'] as List<dynamic>;
+        return tracksList
+            .map((t) => _parseTrack(t as Map<String, dynamic>, album: album))
+            .toList();
+      }
+    } else if (album.id.startsWith('tidal:')) {
+      final tidalId = album.id.replaceFirst('tidal:', '');
+      final metadata = await PlatformBridge.getTidalMetadata('album', tidalId);
+      if (metadata['track_list'] != null) {
+        final tracksList = metadata['track_list'] as List<dynamic>;
+        return tracksList
+            .map((t) => _parseTrack(t as Map<String, dynamic>, album: album))
             .toList();
       }
     } else {

@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,12 @@ var (
 const (
 	spotifyTrackBaseURL   = "https://open.spotify.com/track/"
 	songLinkLookupBaseURL = "https://api.song.link/v1-alpha.1/links?url="
+	tidalPublicAPIBaseURL = "https://tidal.com/v1"
+	tidalPublicToken      = "txNoH4kkV41MfH25"
+	tidalResourceBaseURL  = "https://resources.tidal.com"
+	tidalCountryCode      = "US"
+	tidalLocale           = "en_US"
+	tidalDeviceType       = "BROWSER"
 )
 
 type TidalTrack struct {
@@ -43,19 +50,28 @@ type TidalTrack struct {
 	VolumeNumber int    `json:"volumeNumber"`
 	Duration     int    `json:"duration"`
 	Album        struct {
+		ID          int64  `json:"id"`
 		Title       string `json:"title"`
 		Cover       string `json:"cover"`
 		ReleaseDate string `json:"releaseDate"`
+		URL         string `json:"url"`
 	} `json:"album"`
 	Artists []struct {
-		Name string `json:"name"`
+		ID      int64  `json:"id"`
+		Name    string `json:"name"`
+		Type    string `json:"type"`
+		Picture string `json:"picture"`
 	} `json:"artists"`
 	Artist struct {
-		Name string `json:"name"`
+		ID      int64  `json:"id"`
+		Name    string `json:"name"`
+		Type    string `json:"type"`
+		Picture string `json:"picture"`
 	} `json:"artist"`
 	MediaMetadata struct {
 		Tags []string `json:"tags"`
 	} `json:"mediaMetadata"`
+	URL string `json:"url"`
 }
 
 type TidalAPIResponseV2 struct {
@@ -100,6 +116,97 @@ type MPD struct {
 	} `xml:"Period"`
 }
 
+type tidalPublicArtist struct {
+	ID      int64  `json:"id"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Picture string `json:"picture"`
+}
+
+type tidalPublicAlbum struct {
+	ID             int64               `json:"id"`
+	Title          string              `json:"title"`
+	Type           string              `json:"type"`
+	Cover          string              `json:"cover"`
+	ReleaseDate    string              `json:"releaseDate"`
+	URL            string              `json:"url"`
+	NumberOfTracks int                 `json:"numberOfTracks"`
+	Explicit       bool                `json:"explicit"`
+	Artists        []tidalPublicArtist `json:"artists"`
+}
+
+type tidalPublicAlbumPage struct {
+	Rows []struct {
+		Modules []struct {
+			Type      string           `json:"type"`
+			Album     tidalPublicAlbum `json:"album"`
+			PagedList struct {
+				DataAPIPath        string `json:"dataApiPath"`
+				Limit              int    `json:"limit"`
+				Offset             int    `json:"offset"`
+				TotalNumberOfItems int    `json:"totalNumberOfItems"`
+				Items              []struct {
+					Item TidalTrack `json:"item"`
+					Type string     `json:"type"`
+				} `json:"items"`
+			} `json:"pagedList"`
+		} `json:"modules"`
+	} `json:"rows"`
+}
+
+type tidalPublicArtistPage struct {
+	Rows []struct {
+		Modules []struct {
+			Type   string `json:"type"`
+			Artist struct {
+				ID      int64  `json:"id"`
+				Name    string `json:"name"`
+				URL     string `json:"url"`
+				Picture string `json:"picture"`
+			} `json:"artist"`
+			PagedList struct {
+				DataAPIPath        string             `json:"dataApiPath"`
+				Limit              int                `json:"limit"`
+				Offset             int                `json:"offset"`
+				TotalNumberOfItems int                `json:"totalNumberOfItems"`
+				Items              []tidalPublicAlbum `json:"items"`
+			} `json:"pagedList"`
+		} `json:"modules"`
+	} `json:"rows"`
+}
+
+type tidalPublicArtistAlbumsPage struct {
+	Limit              int                `json:"limit"`
+	Offset             int                `json:"offset"`
+	TotalNumberOfItems int                `json:"totalNumberOfItems"`
+	Items              []tidalPublicAlbum `json:"items"`
+}
+
+type tidalPublicPlaylist struct {
+	UUID           string `json:"uuid"`
+	Title          string `json:"title"`
+	Description    string `json:"description"`
+	Type           string `json:"type"`
+	URL            string `json:"url"`
+	Image          string `json:"image"`
+	SquareImage    string `json:"squareImage"`
+	NumberOfTracks int    `json:"numberOfTracks"`
+	Creator        struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	} `json:"creator"`
+}
+
+type tidalPublicPlaylistItemsPage struct {
+	Limit              int `json:"limit"`
+	Offset             int `json:"offset"`
+	TotalNumberOfItems int `json:"totalNumberOfItems"`
+	Items              []struct {
+		Item TidalTrack `json:"item"`
+		Type string     `json:"type"`
+	} `json:"items"`
+}
+
 func NewTidalDownloader() *TidalDownloader {
 	tidalDownloaderOnce.Do(func() {
 		globalTidalDownloader = &TidalDownloader{
@@ -112,6 +219,408 @@ func NewTidalDownloader() *TidalDownloader {
 		}
 	})
 	return globalTidalDownloader
+}
+
+func tidalPrefixedID(id string) string {
+	trimmed := strings.TrimSpace(id)
+	if trimmed == "" {
+		return ""
+	}
+	return "tidal:" + trimmed
+}
+
+func tidalPrefixedNumericID(id int64) string {
+	if id <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("tidal:%d", id)
+}
+
+func tidalImageURL(imageID, size string) string {
+	normalizedID := strings.TrimSpace(imageID)
+	if normalizedID == "" || strings.TrimSpace(size) == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"%s/images/%s/%s.jpg",
+		tidalResourceBaseURL,
+		strings.ReplaceAll(normalizedID, "-", "/"),
+		size,
+	)
+}
+
+func tidalFirstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func tidalJoinArtistNames(artists []tidalPublicArtist) string {
+	if len(artists) == 0 {
+		return ""
+	}
+
+	names := make([]string, 0, len(artists))
+	for _, artist := range artists {
+		if trimmed := strings.TrimSpace(artist.Name); trimmed != "" {
+			names = append(names, trimmed)
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
+func tidalTrackArtistsDisplay(track *TidalTrack) string {
+	if track == nil {
+		return ""
+	}
+
+	if len(track.Artists) > 0 {
+		names := make([]string, 0, len(track.Artists))
+		for _, artist := range track.Artists {
+			if trimmed := strings.TrimSpace(artist.Name); trimmed != "" {
+				names = append(names, trimmed)
+			}
+		}
+		if len(names) > 0 {
+			return strings.Join(names, ", ")
+		}
+	}
+
+	return strings.TrimSpace(track.Artist.Name)
+}
+
+func tidalAlbumArtistsDisplay(album *tidalPublicAlbum) string {
+	if album == nil {
+		return ""
+	}
+	return tidalJoinArtistNames(album.Artists)
+}
+
+func tidalTrackExternalURL(track *TidalTrack) string {
+	if track == nil {
+		return ""
+	}
+	if trimmed := strings.TrimSpace(track.URL); trimmed != "" {
+		return strings.Replace(trimmed, "http://", "https://", 1)
+	}
+	if track.ID > 0 {
+		return fmt.Sprintf("https://tidal.com/browse/track/%d", track.ID)
+	}
+	return ""
+}
+
+func tidalAlbumExternalURL(album *tidalPublicAlbum) string {
+	if album == nil {
+		return ""
+	}
+	if trimmed := strings.TrimSpace(album.URL); trimmed != "" {
+		return strings.Replace(trimmed, "http://", "https://", 1)
+	}
+	if album.ID > 0 {
+		return fmt.Sprintf("https://tidal.com/browse/album/%d", album.ID)
+	}
+	return ""
+}
+
+func tidalTrackToTrackMetadata(track *TidalTrack) TrackMetadata {
+	if track == nil {
+		return TrackMetadata{}
+	}
+
+	artistID := tidalPrefixedNumericID(track.Artist.ID)
+	if artistID == "" && len(track.Artists) > 0 {
+		artistID = tidalPrefixedNumericID(track.Artists[0].ID)
+	}
+
+	return TrackMetadata{
+		SpotifyID:   tidalPrefixedNumericID(track.ID),
+		Artists:     tidalTrackArtistsDisplay(track),
+		Name:        strings.TrimSpace(track.Title),
+		AlbumName:   strings.TrimSpace(track.Album.Title),
+		AlbumArtist: strings.TrimSpace(track.Artist.Name),
+		DurationMS:  track.Duration * 1000,
+		Images:      tidalImageURL(track.Album.Cover, "1280x1280"),
+		ReleaseDate: strings.TrimSpace(track.Album.ReleaseDate),
+		TrackNumber: track.TrackNumber,
+		DiscNumber:  track.VolumeNumber,
+		ExternalURL: tidalTrackExternalURL(track),
+		ISRC:        strings.TrimSpace(track.ISRC),
+		AlbumID:     tidalPrefixedNumericID(track.Album.ID),
+		ArtistID:    artistID,
+	}
+}
+
+func tidalTrackToAlbumTrackMetadata(track *TidalTrack) AlbumTrackMetadata {
+	if track == nil {
+		return AlbumTrackMetadata{}
+	}
+
+	return AlbumTrackMetadata{
+		SpotifyID:   tidalPrefixedNumericID(track.ID),
+		Artists:     tidalTrackArtistsDisplay(track),
+		Name:        strings.TrimSpace(track.Title),
+		AlbumName:   strings.TrimSpace(track.Album.Title),
+		AlbumArtist: strings.TrimSpace(track.Artist.Name),
+		DurationMS:  track.Duration * 1000,
+		Images:      tidalImageURL(track.Album.Cover, "1280x1280"),
+		ReleaseDate: strings.TrimSpace(track.Album.ReleaseDate),
+		TrackNumber: track.TrackNumber,
+		DiscNumber:  track.VolumeNumber,
+		ExternalURL: tidalTrackExternalURL(track),
+		ISRC:        strings.TrimSpace(track.ISRC),
+		AlbumID:     tidalPrefixedNumericID(track.Album.ID),
+		AlbumURL:    strings.Replace(strings.TrimSpace(track.Album.URL), "http://", "https://", 1),
+	}
+}
+
+func tidalAlbumToAlbumInfo(album *tidalPublicAlbum) AlbumInfoMetadata {
+	if album == nil {
+		return AlbumInfoMetadata{}
+	}
+
+	artistID := ""
+	if len(album.Artists) > 0 {
+		artistID = tidalPrefixedNumericID(album.Artists[0].ID)
+	}
+
+	return AlbumInfoMetadata{
+		TotalTracks: album.NumberOfTracks,
+		Name:        strings.TrimSpace(album.Title),
+		ReleaseDate: strings.TrimSpace(album.ReleaseDate),
+		Artists:     tidalAlbumArtistsDisplay(album),
+		ArtistId:    artistID,
+		Images:      tidalImageURL(album.Cover, "1280x1280"),
+	}
+}
+
+func tidalAlbumToArtistAlbum(album *tidalPublicAlbum) ArtistAlbumMetadata {
+	if album == nil {
+		return ArtistAlbumMetadata{}
+	}
+
+	return ArtistAlbumMetadata{
+		ID:          tidalPrefixedNumericID(album.ID),
+		Name:        strings.TrimSpace(album.Title),
+		ReleaseDate: strings.TrimSpace(album.ReleaseDate),
+		TotalTracks: album.NumberOfTracks,
+		Images:      tidalImageURL(album.Cover, "1280x1280"),
+		AlbumType:   strings.ToLower(strings.TrimSpace(album.Type)),
+		Artists:     tidalAlbumArtistsDisplay(album),
+	}
+}
+
+func tidalPlaylistOwnerName(playlist *tidalPublicPlaylist) string {
+	if playlist == nil {
+		return ""
+	}
+	if trimmed := strings.TrimSpace(playlist.Creator.Name); trimmed != "" {
+		return trimmed
+	}
+	if strings.EqualFold(strings.TrimSpace(playlist.Type), "ARTIST") {
+		return "Artist"
+	}
+	return "TIDAL"
+}
+
+func tidalBuildMetadataURL(path string, extraQuery url.Values) string {
+	trimmedPath := strings.TrimLeft(strings.TrimSpace(path), "/")
+	if trimmedPath == "" {
+		return tidalPublicAPIBaseURL
+	}
+
+	baseURL, err := url.Parse(tidalPublicAPIBaseURL + "/" + trimmedPath)
+	if err != nil {
+		return tidalPublicAPIBaseURL + "/" + trimmedPath
+	}
+
+	query := baseURL.Query()
+	query.Set("countryCode", tidalCountryCode)
+	query.Set("locale", tidalLocale)
+	query.Set("deviceType", tidalDeviceType)
+	for key, values := range extraQuery {
+		query.Del(key)
+		for _, value := range values {
+			query.Add(key, value)
+		}
+	}
+	baseURL.RawQuery = query.Encode()
+	return baseURL.String()
+}
+
+func (t *TidalDownloader) getTidalMetadataJSON(requestURL string, target interface{}) error {
+	req, err := http.NewRequest("GET", requestURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("x-tidal-token", tidalPublicToken)
+
+	resp, err := DoRequestWithUserAgent(t.client, req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("tidal metadata request failed: HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	return json.NewDecoder(resp.Body).Decode(target)
+}
+
+func (t *TidalDownloader) getPublicTrack(resourceID string) (*TidalTrack, error) {
+	trackID, err := strconv.ParseInt(strings.TrimSpace(resourceID), 10, 64)
+	if err != nil || trackID <= 0 {
+		return nil, fmt.Errorf("invalid tidal track ID: %s", resourceID)
+	}
+
+	requestURL := tidalBuildMetadataURL(fmt.Sprintf("tracks/%d", trackID), nil)
+	var track TidalTrack
+	if err := t.getTidalMetadataJSON(requestURL, &track); err != nil {
+		return nil, err
+	}
+	return &track, nil
+}
+
+func (t *TidalDownloader) getAlbumPage(resourceID string) (*tidalPublicAlbumPage, error) {
+	albumID := strings.TrimSpace(resourceID)
+	if albumID == "" {
+		return nil, fmt.Errorf("invalid tidal album ID")
+	}
+
+	requestURL := tidalBuildMetadataURL("pages/album", url.Values{"albumId": {albumID}})
+	var page tidalPublicAlbumPage
+	if err := t.getTidalMetadataJSON(requestURL, &page); err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+func (t *TidalDownloader) getArtistPage(resourceID string) (*tidalPublicArtistPage, error) {
+	artistID := strings.TrimSpace(resourceID)
+	if artistID == "" {
+		return nil, fmt.Errorf("invalid tidal artist ID")
+	}
+
+	requestURL := tidalBuildMetadataURL("pages/artist", url.Values{"artistId": {artistID}})
+	var page tidalPublicArtistPage
+	if err := t.getTidalMetadataJSON(requestURL, &page); err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+func (t *TidalDownloader) getArtistAlbumsPage(dataAPIPath string, offset, limit int) (*tidalPublicArtistAlbumsPage, error) {
+	extraQuery := url.Values{}
+	if offset >= 0 {
+		extraQuery.Set("offset", strconv.Itoa(offset))
+	}
+	if limit > 0 {
+		extraQuery.Set("limit", strconv.Itoa(limit))
+	}
+
+	requestURL := tidalBuildMetadataURL(dataAPIPath, extraQuery)
+	var page tidalPublicArtistAlbumsPage
+	if err := t.getTidalMetadataJSON(requestURL, &page); err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+func (t *TidalDownloader) getPlaylist(resourceID string) (*tidalPublicPlaylist, error) {
+	playlistID := strings.TrimSpace(resourceID)
+	if playlistID == "" {
+		return nil, fmt.Errorf("invalid tidal playlist ID")
+	}
+
+	requestURL := tidalBuildMetadataURL("playlists/"+url.PathEscape(playlistID), nil)
+	var playlist tidalPublicPlaylist
+	if err := t.getTidalMetadataJSON(requestURL, &playlist); err != nil {
+		return nil, err
+	}
+	return &playlist, nil
+}
+
+func (t *TidalDownloader) getPlaylistItemsPage(resourceID string, offset, limit int) (*tidalPublicPlaylistItemsPage, error) {
+	playlistID := strings.TrimSpace(resourceID)
+	if playlistID == "" {
+		return nil, fmt.Errorf("invalid tidal playlist ID")
+	}
+
+	requestURL := tidalBuildMetadataURL(
+		"playlists/"+url.PathEscape(playlistID)+"/items",
+		url.Values{
+			"offset": {strconv.Itoa(offset)},
+			"limit":  {strconv.Itoa(limit)},
+		},
+	)
+	var page tidalPublicPlaylistItemsPage
+	if err := t.getTidalMetadataJSON(requestURL, &page); err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+func findTidalAlbumPageModule(page *tidalPublicAlbumPage, moduleType string) *struct {
+	Type      string           `json:"type"`
+	Album     tidalPublicAlbum `json:"album"`
+	PagedList struct {
+		DataAPIPath        string `json:"dataApiPath"`
+		Limit              int    `json:"limit"`
+		Offset             int    `json:"offset"`
+		TotalNumberOfItems int    `json:"totalNumberOfItems"`
+		Items              []struct {
+			Item TidalTrack `json:"item"`
+			Type string     `json:"type"`
+		} `json:"items"`
+	} `json:"pagedList"`
+} {
+	if page == nil {
+		return nil
+	}
+	for rowIndex := range page.Rows {
+		for moduleIndex := range page.Rows[rowIndex].Modules {
+			module := &page.Rows[rowIndex].Modules[moduleIndex]
+			if module.Type == moduleType {
+				return module
+			}
+		}
+	}
+	return nil
+}
+
+func findTidalArtistPageModule(page *tidalPublicArtistPage, moduleType string) *struct {
+	Type   string `json:"type"`
+	Artist struct {
+		ID      int64  `json:"id"`
+		Name    string `json:"name"`
+		URL     string `json:"url"`
+		Picture string `json:"picture"`
+	} `json:"artist"`
+	PagedList struct {
+		DataAPIPath        string             `json:"dataApiPath"`
+		Limit              int                `json:"limit"`
+		Offset             int                `json:"offset"`
+		TotalNumberOfItems int                `json:"totalNumberOfItems"`
+		Items              []tidalPublicAlbum `json:"items"`
+	} `json:"pagedList"`
+} {
+	if page == nil {
+		return nil
+	}
+	for rowIndex := range page.Rows {
+		for moduleIndex := range page.Rows[rowIndex].Modules {
+			module := &page.Rows[rowIndex].Modules[moduleIndex]
+			if module.Type == moduleType {
+				return module
+			}
+		}
+	}
+	return nil
 }
 
 func (t *TidalDownloader) GetAvailableAPIs() []string {
@@ -201,6 +710,146 @@ func (t *TidalDownloader) SearchTrackByMetadataWithISRC(trackName, artistName, a
 
 func (t *TidalDownloader) SearchTrackByMetadata(trackName, artistName string) (*TidalTrack, error) {
 	return nil, fmt.Errorf("tidal metadata search API disabled: no client credentials mode")
+}
+
+func (t *TidalDownloader) GetTrackMetadata(resourceID string) (*TrackResponse, error) {
+	track, err := t.getPublicTrack(resourceID)
+	if err != nil {
+		return nil, err
+	}
+	return &TrackResponse{Track: tidalTrackToTrackMetadata(track)}, nil
+}
+
+func (t *TidalDownloader) GetAlbumMetadata(resourceID string) (*AlbumResponsePayload, error) {
+	page, err := t.getAlbumPage(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	headerModule := findTidalAlbumPageModule(page, "ALBUM_HEADER")
+	itemsModule := findTidalAlbumPageModule(page, "ALBUM_ITEMS")
+	if headerModule == nil {
+		return nil, fmt.Errorf("tidal album page missing album header")
+	}
+	if itemsModule == nil {
+		return nil, fmt.Errorf("tidal album page missing track list")
+	}
+
+	tracks := make([]AlbumTrackMetadata, 0, len(itemsModule.PagedList.Items))
+	for _, item := range itemsModule.PagedList.Items {
+		track := item.Item
+		if track.Album.ID == 0 {
+			track.Album.ID = headerModule.Album.ID
+			track.Album.Title = headerModule.Album.Title
+			track.Album.Cover = headerModule.Album.Cover
+			track.Album.ReleaseDate = headerModule.Album.ReleaseDate
+			track.Album.URL = headerModule.Album.URL
+		}
+		tracks = append(tracks, tidalTrackToAlbumTrackMetadata(&track))
+	}
+
+	return &AlbumResponsePayload{
+		AlbumInfo: tidalAlbumToAlbumInfo(&headerModule.Album),
+		TrackList: tracks,
+	}, nil
+}
+
+func (t *TidalDownloader) GetPlaylistMetadata(resourceID string) (*PlaylistResponsePayload, error) {
+	playlist, err := t.getPlaylist(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	const pageSize = 50
+	offset := 0
+	totalTracks := playlist.NumberOfTracks
+	tracks := make([]AlbumTrackMetadata, 0, totalTracks)
+
+	for {
+		page, pageErr := t.getPlaylistItemsPage(resourceID, offset, pageSize)
+		if pageErr != nil {
+			return nil, pageErr
+		}
+		if totalTracks == 0 && page.TotalNumberOfItems > 0 {
+			totalTracks = page.TotalNumberOfItems
+		}
+
+		for _, item := range page.Items {
+			if item.Type != "track" {
+				continue
+			}
+			tracks = append(tracks, tidalTrackToAlbumTrackMetadata(&item.Item))
+		}
+
+		if len(page.Items) == 0 || offset+len(page.Items) >= totalTracks || len(page.Items) < pageSize {
+			break
+		}
+		offset += len(page.Items)
+	}
+
+	var info PlaylistInfoMetadata
+	info.Tracks.Total = totalTracks
+	info.Name = strings.TrimSpace(playlist.Title)
+	info.Images = tidalImageURL(tidalFirstNonEmpty(playlist.SquareImage, playlist.Image), "1280x1280")
+	info.Owner.DisplayName = tidalPlaylistOwnerName(playlist)
+	info.Owner.Name = strings.TrimSpace(playlist.Title)
+	info.Owner.Images = info.Images
+
+	return &PlaylistResponsePayload{
+		PlaylistInfo: info,
+		TrackList:    tracks,
+	}, nil
+}
+
+func (t *TidalDownloader) GetArtistMetadata(resourceID string) (*ArtistResponsePayload, error) {
+	page, err := t.getArtistPage(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	headerModule := findTidalArtistPageModule(page, "ARTIST_HEADER")
+	albumsModule := findTidalArtistPageModule(page, "ALBUM_LIST")
+	if headerModule == nil {
+		return nil, fmt.Errorf("tidal artist page missing artist header")
+	}
+	if albumsModule == nil {
+		return nil, fmt.Errorf("tidal artist page missing albums list")
+	}
+
+	albums := make([]ArtistAlbumMetadata, 0, albumsModule.PagedList.TotalNumberOfItems)
+	for _, album := range albumsModule.PagedList.Items {
+		albums = append(albums, tidalAlbumToArtistAlbum(&album))
+	}
+
+	pageSize := albumsModule.PagedList.Limit
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	offset := len(albumsModule.PagedList.Items)
+	for offset < albumsModule.PagedList.TotalNumberOfItems && strings.TrimSpace(albumsModule.PagedList.DataAPIPath) != "" {
+		albumsPage, pageErr := t.getArtistAlbumsPage(albumsModule.PagedList.DataAPIPath, offset, pageSize)
+		if pageErr != nil {
+			return nil, pageErr
+		}
+
+		for _, album := range albumsPage.Items {
+			albums = append(albums, tidalAlbumToArtistAlbum(&album))
+		}
+
+		if len(albumsPage.Items) == 0 || offset+len(albumsPage.Items) >= albumsPage.TotalNumberOfItems {
+			break
+		}
+		offset += len(albumsPage.Items)
+	}
+
+	return &ArtistResponsePayload{
+		ArtistInfo: ArtistInfoMetadata{
+			ID:     tidalPrefixedNumericID(headerModule.Artist.ID),
+			Name:   strings.TrimSpace(headerModule.Artist.Name),
+			Images: tidalImageURL(headerModule.Artist.Picture, "750x750"),
+		},
+		Albums: albums,
+	}, nil
 }
 
 type TidalDownloadInfo struct {
@@ -1062,20 +1711,18 @@ func isLatinScript(s string) bool {
 	return true
 }
 
-func tidalTrackArtistsDisplay(track *TidalTrack) string {
-	if track == nil {
-		return ""
+func parseTidalRequestTrackID(raw string) (int64, bool) {
+	trimmed := strings.TrimSpace(raw)
+	trimmed = strings.TrimPrefix(trimmed, "tidal:")
+	if trimmed == "" {
+		return 0, false
 	}
 
-	tidalArtist := track.Artist.Name
-	if len(track.Artists) > 0 {
-		var artistNames []string
-		for _, a := range track.Artists {
-			artistNames = append(artistNames, a.Name)
-		}
-		tidalArtist = strings.Join(artistNames, ", ")
+	trackID, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil || trackID <= 0 {
+		return 0, false
 	}
-	return tidalArtist
+	return trackID, true
 }
 
 func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloader, logPrefix string) (*TidalTrack, error) {
@@ -1091,8 +1738,9 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 	var gotTidalID bool
 
 	if req.TidalID != "" {
-		GoLog("[%s] Using Tidal ID from Odesli enrichment: %s\n", logPrefix, req.TidalID)
-		if _, parseErr := fmt.Sscanf(req.TidalID, "%d", &trackID); parseErr == nil && trackID > 0 {
+		GoLog("[%s] Using Tidal ID from request payload: %s\n", logPrefix, req.TidalID)
+		if parsedTrackID, ok := parseTidalRequestTrackID(req.TidalID); ok {
+			trackID = parsedTrackID
 			gotTidalID = true
 		}
 	}
@@ -1113,7 +1761,8 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 				return
 			}
 			if availability.TidalID != "" {
-				if _, parseErr := fmt.Sscanf(availability.TidalID, "%d", &trackID); parseErr == nil && trackID > 0 {
+				if parsedTrackID, ok := parseTidalRequestTrackID(availability.TidalID); ok {
+					trackID = parsedTrackID
 					GoLog("[%s] Got Tidal ID %d directly from SongLink\n", logPrefix, trackID)
 					gotTidalID = true
 					return
