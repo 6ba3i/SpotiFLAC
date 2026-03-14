@@ -298,11 +298,23 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
 
       final resolvedBitDepth = _readPositiveInt(metadata['bit_depth']);
       final resolvedSampleRate = _readPositiveInt(metadata['sample_rate']);
+      final resolvedDuration = _readPositiveInt(metadata['duration']);
+      final resolvedAlbum = metadata['album']?.toString();
       final resolvedQuality = buildDisplayAudioQuality(
         bitDepth: resolvedBitDepth ?? bitDepth,
         sampleRate: resolvedSampleRate ?? sampleRate,
         storedQuality: _quality,
       );
+
+      // Fill in album name from file tags if stored value is empty
+      final needsAlbum = resolvedAlbum != null &&
+          resolvedAlbum.isNotEmpty &&
+          (albumName.isEmpty);
+      // Fill in duration from file if stored value is missing/zero
+      final needsDuration = resolvedDuration != null &&
+          resolvedDuration > 0 &&
+          (duration == null || duration == 0);
+
       final shouldPersistResolvedAudioMetadata =
           resolvedBitDepth != null ||
           resolvedSampleRate != null ||
@@ -310,6 +322,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
 
       if ((resolvedBitDepth != null ||
               resolvedSampleRate != null ||
+              needsAlbum ||
+              needsDuration ||
               isPlaceholderQualityLabel(_quality)) &&
           mounted) {
         setState(() {
@@ -317,6 +331,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
             ...?_editedMetadata,
             if (resolvedBitDepth != null) 'bit_depth': resolvedBitDepth,
             if (resolvedSampleRate != null) 'sample_rate': resolvedSampleRate,
+            if (needsAlbum) 'album': resolvedAlbum,
+            if (needsDuration) 'duration': resolvedDuration,
           };
         });
       }
@@ -486,7 +502,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
       _editedMetadata?['copyright']?.toString() ??
       (_isLocalItem ? null : _downloadItem!.copyright);
   int? get duration =>
-      _isLocalItem ? _localLibraryItem!.duration : _downloadItem!.duration;
+      _readPositiveInt(_editedMetadata?['duration']) ??
+      (_isLocalItem ? _localLibraryItem!.duration : _downloadItem!.duration);
   int? get bitDepth =>
       _readPositiveInt(_editedMetadata?['bit_depth']) ??
       (_isLocalItem ? _localLibraryItem!.bitDepth : _downloadItem!.bitDepth);
@@ -1035,14 +1052,23 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
               Builder(
                 builder: (context) {
                   final isDeezer = _spotifyId!.contains('deezer');
+                  final svc = _service.toLowerCase();
+                  String buttonLabel;
+                  if (isDeezer) {
+                    buttonLabel = context.l10n.trackOpenInDeezer;
+                  } else if (svc == 'amazon') {
+                    buttonLabel = 'Open in Amazon Music';
+                  } else if (svc == 'tidal') {
+                    buttonLabel = 'Open in Tidal';
+                  } else if (svc == 'qobuz') {
+                    buttonLabel = 'Open in Qobuz';
+                  } else {
+                    buttonLabel = context.l10n.trackOpenInSpotify;
+                  }
                   return OutlinedButton.icon(
                     onPressed: () => _openServiceUrl(context),
                     icon: const Icon(Icons.open_in_new, size: 18),
-                    label: Text(
-                      isDeezer
-                          ? context.l10n.trackOpenInDeezer
-                          : context.l10n.trackOpenInSpotify,
-                    ),
+                    label: Text(buttonLabel),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1067,14 +1093,33 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
 
     final isDeezer = _spotifyId!.contains('deezer');
     final rawId = _spotifyId!.replaceAll('deezer:', '');
+    final svc = _service.toLowerCase();
 
-    final webUrl = isDeezer
-        ? 'https://www.deezer.com/track/$rawId'
-        : 'https://open.spotify.com/track/$rawId';
+    String webUrl;
+    Uri? appUri;
+    String serviceName;
 
-    final appUri = isDeezer
-        ? Uri.parse('deezer://www.deezer.com/track/$rawId')
-        : Uri.parse('spotify:track:$rawId');
+    if (isDeezer) {
+      webUrl = 'https://www.deezer.com/track/$rawId';
+      appUri = Uri.parse('deezer://www.deezer.com/track/$rawId');
+      serviceName = 'Deezer';
+    } else if (svc == 'amazon') {
+      webUrl = 'https://music.amazon.com/search/$rawId';
+      appUri = Uri.parse('amznm://search/$rawId');
+      serviceName = 'Amazon Music';
+    } else if (svc == 'tidal') {
+      webUrl = 'https://listen.tidal.com/track/$rawId';
+      appUri = Uri.parse('tidal://track/$rawId');
+      serviceName = 'Tidal';
+    } else if (svc == 'qobuz') {
+      webUrl = 'https://play.qobuz.com/track/$rawId';
+      appUri = Uri.parse('qobuz://track/$rawId');
+      serviceName = 'Qobuz';
+    } else {
+      webUrl = 'https://open.spotify.com/track/$rawId';
+      appUri = Uri.parse('spotify:track:$rawId');
+      serviceName = 'Spotify';
+    }
 
     try {
       final launched = await launchUrl(
@@ -1100,7 +1145,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                context.l10n.snackbarUrlCopied(isDeezer ? 'Deezer' : 'Spotify'),
+                context.l10n.snackbarUrlCopied(serviceName),
               ),
             ),
           );
@@ -1140,7 +1185,22 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     if (!_isLocalItem && _spotifyId != null && _spotifyId!.isNotEmpty) {
       final isDeezer = _spotifyId!.contains('deezer');
       final cleanId = _spotifyId!.replaceAll('deezer:', '');
-      items.add(_MetadataItem(isDeezer ? 'Deezer ID' : 'Spotify ID', cleanId));
+      String idLabel;
+      if (isDeezer) {
+        idLabel = 'Deezer ID';
+      } else {
+        switch (_service.toLowerCase()) {
+          case 'amazon':
+            idLabel = 'Amazon ASIN';
+          case 'tidal':
+            idLabel = 'Tidal ID';
+          case 'qobuz':
+            idLabel = 'Qobuz ID';
+          default:
+            idLabel = 'Spotify ID';
+        }
+      }
+      items.add(_MetadataItem(idLabel, cleanId));
     }
 
     items.add(
@@ -1153,7 +1213,12 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     return Column(
       children: items.map((metadata) {
         final isCopyable =
-            metadata.label == 'ISRC' || metadata.label == 'Spotify ID';
+            metadata.label == 'ISRC' ||
+            metadata.label == 'Spotify ID' ||
+            metadata.label == 'Deezer ID' ||
+            metadata.label == 'Amazon ASIN' ||
+            metadata.label == 'Tidal ID' ||
+            metadata.label == 'Qobuz ID';
         return InkWell(
           onTap: isCopyable
               ? () => _copyToClipboard(context, metadata.value)

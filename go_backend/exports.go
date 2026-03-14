@@ -2602,6 +2602,28 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 			artistResponse["albums"] = albums
 		}
 
+		if len(result.Artist.Releases) > 0 {
+			releases := make([]map[string]interface{}, len(result.Artist.Releases))
+			for i, release := range result.Artist.Releases {
+				releaseType := release.AlbumType
+				if releaseType == "" {
+					releaseType = "album"
+				}
+				releases[i] = map[string]interface{}{
+					"id":           release.ID,
+					"name":         release.Name,
+					"artists":      release.Artists,
+					"images":       release.CoverURL,
+					"cover_url":    release.CoverURL,
+					"release_date": release.ReleaseDate,
+					"total_tracks": release.TotalTracks,
+					"album_type":   releaseType,
+					"provider_id":  release.ProviderID,
+				}
+			}
+			artistResponse["releases"] = releases
+		}
+
 		if len(result.Artist.TopTracks) > 0 {
 			topTracks := make([]map[string]interface{}, len(result.Artist.TopTracks))
 			for i, track := range result.Artist.TopTracks {
@@ -2849,6 +2871,27 @@ func GetArtistWithExtensionJSON(extensionID, artistID string) (string, error) {
 		"cover_url":   artist.ImageURL,
 		"albums":      albums,
 		"provider_id": artist.ProviderID,
+	}
+
+	if len(artist.Releases) > 0 {
+		releases := make([]map[string]interface{}, len(artist.Releases))
+		for i, release := range artist.Releases {
+			releaseType := release.AlbumType
+			if releaseType == "" {
+				releaseType = "album"
+			}
+			releases[i] = map[string]interface{}{
+				"id":           release.ID,
+				"name":         release.Name,
+				"artists":      release.Artists,
+				"cover_url":    release.CoverURL,
+				"release_date": release.ReleaseDate,
+				"total_tracks": release.TotalTracks,
+				"album_type":   releaseType,
+				"provider_id":  release.ProviderID,
+			}
+		}
+		response["releases"] = releases
 	}
 
 	if artist.HeaderImage != "" {

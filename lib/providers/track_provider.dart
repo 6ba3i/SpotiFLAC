@@ -933,8 +933,10 @@ class TrackNotifier extends Notifier<TrackState> {
 
   Track _parseTrack(Map<String, dynamic> data) {
     final durationMs = _extractDurationMs(data);
+    final spotifyId = (data['spotify_id'] ?? '').toString();
+    final nativeId = (data['id'] ?? '').toString();
     return Track(
-      id: data['spotify_id'] as String? ?? '',
+      id: spotifyId.isNotEmpty ? spotifyId : nativeId,
       name: data['name'] as String? ?? '',
       artistName: data['artists'] as String? ?? '',
       albumName: data['album_name'] as String? ?? '',

@@ -67,6 +67,7 @@ AGENTS.md
 
 # Temp/misc
 nul
+network_requests.txt
 
 # Log files
 *.log

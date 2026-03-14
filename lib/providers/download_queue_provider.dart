@@ -2373,11 +2373,25 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final backendAlbum = normalizeOptionalString(
       backendResult['album'] as String?,
     );
+    final backendIsrc = normalizeOptionalString(
+      backendResult['isrc'] as String?,
+    );
+    final backendCoverUrl = normalizeOptionalString(
+      backendResult['cover_url'] as String?,
+    );
+    final backendAlbumArtist = normalizeOptionalString(
+      backendResult['album_artist'] as String?,
+    );
 
-    if (backendTrackNum == null &&
-        backendDiscNum == null &&
-        backendYear == null &&
-        backendAlbum == null) {
+    final hasOverrides = backendTrackNum != null ||
+        backendDiscNum != null ||
+        backendYear != null ||
+        backendAlbum != null ||
+        backendIsrc != null ||
+        backendCoverUrl != null ||
+        backendAlbumArtist != null;
+
+    if (!hasOverrides) {
       return baseTrack;
     }
 
@@ -2386,12 +2400,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       name: baseTrack.name,
       artistName: baseTrack.artistName,
       albumName: backendAlbum ?? baseTrack.albumName,
-      albumArtist: resolvedAlbumArtist,
+      albumArtist: backendAlbumArtist ?? resolvedAlbumArtist,
       artistId: baseTrack.artistId,
       albumId: baseTrack.albumId,
-      coverUrl: baseTrack.coverUrl,
+      coverUrl: backendCoverUrl ?? baseTrack.coverUrl,
       duration: baseTrack.duration,
-      isrc: baseTrack.isrc,
+      isrc: backendIsrc ?? baseTrack.isrc,
       trackNumber: backendTrackNum ?? baseTrack.trackNumber,
       discNumber: backendDiscNum ?? baseTrack.discNumber,
       releaseDate: backendYear ?? baseTrack.releaseDate,
