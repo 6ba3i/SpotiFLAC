@@ -39,6 +39,7 @@ class _LibraryTracksFolderScreenState
 
   bool _isSelectionMode = false;
   final Set<String> _selectedKeys = {};
+  UserPlaylistCollection? playlist;
 
   @override
   void initState() {
@@ -243,7 +244,6 @@ class _LibraryTracksFolderScreenState
     final colorScheme = Theme.of(context).colorScheme;
     ref.watch(localLibraryProvider.select((s) => s.items));
     final localState = ref.read(localLibraryProvider);
-    final UserPlaylistCollection? playlist;
     final List<CollectionTrackEntry> entries;
 
     switch (widget.mode) {
@@ -873,6 +873,7 @@ class _LibraryTracksFolderScreenState
   void _downloadAll(List<Track> tracks) {
     if (tracks.isEmpty) return;
     final settings = ref.read(settingsProvider);
+    final playlistName = widget.mode == LibraryTracksFolderMode.playlist ? playlist?.name ?? context.l10n.collectionPlaylist : null;
     if (settings.askQualityBeforeDownload) {
       DownloadServicePicker.show(
         context,
@@ -885,7 +886,7 @@ class _LibraryTracksFolderScreenState
         onSelect: (quality, service) {
           ref
               .read(downloadQueueProvider.notifier)
-              .addMultipleToQueue(tracks, service, qualityOverride: quality);
+              .addMultipleToQueue(tracks, service, qualityOverride: quality, playlistName: playlistName);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -899,7 +900,7 @@ class _LibraryTracksFolderScreenState
     } else {
       ref
           .read(downloadQueueProvider.notifier)
-          .addMultipleToQueue(tracks, settings.defaultService);
+          .addMultipleToQueue(tracks, settings.defaultService, playlistName: playlistName);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.snackbarAddedTracksToQueue(tracks.length)),
