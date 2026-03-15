@@ -1757,6 +1757,11 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
 
     setState(() => _isEmbedding = true);
 
+    // Capture l10n strings before async gaps to avoid use_build_context_synchronously
+    final l10nFailedToWriteStorage = context.l10n.snackbarFailedToWriteStorage;
+    final l10nFailedToEmbedLyrics = context.l10n.snackbarFailedToEmbedLyrics;
+    final l10nUnsupportedFormat = context.l10n.snackbarUnsupportedAudioFormat;
+
     String? safTempPath;
     String? coverPath;
 
@@ -1793,13 +1798,13 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
             );
             success = ok;
             if (!ok) {
-              error = context.l10n.snackbarFailedToWriteStorage;
+              error = l10nFailedToWriteStorage;
             }
           } else {
             success = true;
           }
         } else {
-          error = result['error']?.toString() ?? context.l10n.snackbarFailedToEmbedLyrics;
+          error = result['error']?.toString() ?? l10nFailedToEmbedLyrics;
         }
       } else if (isMp3 || isOpus) {
         final metadata = _buildFallbackMetadata();
@@ -1845,7 +1850,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         }
 
         if (ffmpegResult == null) {
-          error = context.l10n.snackbarFailedToEmbedLyrics;
+          error = l10nFailedToEmbedLyrics;
         } else if (_isSafFile) {
           final ok = await PlatformBridge.writeTempToSaf(
             ffmpegResult,
@@ -1853,13 +1858,13 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
           );
           success = ok;
           if (!ok) {
-            error = context.l10n.snackbarFailedToWriteStorage;
+            error = l10nFailedToWriteStorage;
           }
         } else {
           success = true;
         }
       } else {
-        error = context.l10n.snackbarUnsupportedAudioFormat;
+        error = l10nUnsupportedFormat;
       }
 
       if (mounted) {
@@ -4299,7 +4304,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
       best ??= results.first;
 
-      // Extract metadata from best match
+      // Extract basic metadata from search result
       final enriched = <String, String>{
         'title': (best['name'] ?? '').toString(),
         'artist': (best['artists'] ?? best['artist'] ?? '').toString(),
@@ -4311,39 +4316,82 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         'isrc': (best['isrc'] ?? '').toString(),
       };
 
-      // Try to get extended metadata (genre, label, copyright) from Deezer
+      final needsIsrc = _autoFillFields.contains('isrc') &&
+          enriched['isrc']!.isEmpty;
+      final needsExtended = _autoFillFields.contains('genre') ||
+          _autoFillFields.contains('label') ||
+          _autoFillFields.contains('copyright');
+
       final trackId =
           (best['spotify_id'] ?? best['id'] ?? '').toString();
-      final source = (best['source'] ?? best['provider_id'] ?? '').toString();
+      final source =
+          (best['source'] ?? best['provider_id'] ?? '').toString();
+      final isDeezerSource = source.toLowerCase().contains('deezer');
 
-      if ((_autoFillFields.contains('genre') ||
-              _autoFillFields.contains('label') ||
-              _autoFillFields.contains('copyright')) &&
-          trackId.isNotEmpty) {
+      // Resolve Deezer track ID for extended metadata + ISRC
+      String? deezerId;
+
+      if ((needsIsrc || needsExtended) && trackId.isNotEmpty) {
         try {
-          // If source is Deezer, fetch extended metadata directly
-          Map<String, String>? extended;
-          if (source.toLowerCase().contains('deezer')) {
-            extended = await PlatformBridge.getDeezerExtendedMetadata(trackId);
+          if (isDeezerSource) {
+            // Source is Deezer — trackId is already a Deezer ID
+            deezerId = trackId;
           } else {
-            // Try ISRC lookup via Deezer for genre/label/copyright
-            final isrcForLookup = enriched['isrc'] ?? '';
-            if (isrcForLookup.isNotEmpty) {
-              try {
-                final deezerResult = await PlatformBridge.searchDeezerByISRC(
-                  isrcForLookup,
-                );
-                final deezerTrackId =
-                    (deezerResult['id'] ?? deezerResult['track_id'] ?? '')
-                        .toString();
-                if (deezerTrackId.isNotEmpty) {
-                  extended = await PlatformBridge.getDeezerExtendedMetadata(
-                    deezerTrackId,
-                  );
-                }
-              } catch (_) {}
+            // Source is Spotify/extension — convert to Deezer via SongLink
+            final deezerData = await PlatformBridge.convertSpotifyToDeezer(
+              'track',
+              trackId,
+            );
+            final trackData = deezerData['track'];
+            if (trackData is Map<String, dynamic>) {
+              final rawId = trackData['spotify_id'] as String?;
+              if (rawId != null && rawId.startsWith('deezer:')) {
+                deezerId = rawId.split(':')[1];
+              }
+              // Also grab ISRC and release_date from the conversion response
+              final convIsrc = (trackData['isrc'] ?? '').toString().trim();
+              if (convIsrc.isNotEmpty && enriched['isrc']!.isEmpty) {
+                enriched['isrc'] = convIsrc;
+              }
+              final convDate =
+                  (trackData['release_date'] ?? '').toString().trim();
+              if (convDate.isNotEmpty && enriched['date']!.isEmpty) {
+                enriched['date'] = convDate;
+              }
             }
+            // Fallback: legacy ID format
+            deezerId ??= (deezerData['id'] ?? '').toString();
+            if (deezerId.isEmpty) deezerId = null;
           }
+        } catch (_) {
+          // SongLink conversion is best-effort
+        }
+      }
+
+      if (!mounted) return;
+
+      // Fetch ISRC from Deezer track metadata if still missing
+      if (needsIsrc && enriched['isrc']!.isEmpty && deezerId != null) {
+        try {
+          final deezerMeta = await PlatformBridge.getDeezerMetadata(
+            'track',
+            deezerId,
+          );
+          final deezerIsrc = (deezerMeta['isrc'] ?? '').toString().trim();
+          if (deezerIsrc.isNotEmpty) {
+            enriched['isrc'] = deezerIsrc;
+          }
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+
+      // Fetch genre/label/copyright from Deezer extended metadata
+      if (needsExtended && deezerId != null) {
+        try {
+          final extended = await PlatformBridge.getDeezerExtendedMetadata(
+            deezerId,
+          );
           if (extended != null) {
             enriched['genre'] = extended['genre'] ?? '';
             enriched['label'] = extended['label'] ?? '';
@@ -4352,6 +4400,29 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         } catch (_) {
           // Extended metadata is best-effort
         }
+      }
+
+      // Fallback: if still no Deezer ID but we have ISRC, try ISRC lookup
+      if (needsExtended &&
+          deezerId == null &&
+          enriched['isrc']!.isNotEmpty) {
+        try {
+          final deezerResult = await PlatformBridge.searchDeezerByISRC(
+            enriched['isrc']!,
+          );
+          final fallbackId =
+              (deezerResult['id'] ?? deezerResult['track_id'] ?? '')
+                  .toString();
+          if (fallbackId.isNotEmpty) {
+            final extended =
+                await PlatformBridge.getDeezerExtendedMetadata(fallbackId);
+            if (extended != null) {
+              enriched['genre'] = extended['genre'] ?? '';
+              enriched['label'] = extended['label'] ?? '';
+              enriched['copyright'] = extended['copyright'] ?? '';
+            }
+          }
+        } catch (_) {}
       }
 
       if (!mounted) return;
