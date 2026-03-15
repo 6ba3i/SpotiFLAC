@@ -1694,6 +1694,8 @@ func ExtractCoverToFile(audioPath string, outputPath string) error {
 
 	if strings.HasSuffix(lower, ".flac") {
 		coverData, err = ExtractCoverArt(audioPath)
+	} else if strings.HasSuffix(lower, ".m4a") || strings.HasSuffix(lower, ".aac") {
+		coverData, err = extractCoverFromM4A(audioPath)
 	} else if strings.HasSuffix(lower, ".mp3") {
 		coverData, _, err = extractMP3CoverArt(audioPath)
 	} else if strings.HasSuffix(lower, ".opus") || strings.HasSuffix(lower, ".ogg") {
