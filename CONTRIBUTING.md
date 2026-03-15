@@ -86,17 +86,31 @@ Translation files are located in `lib/l10n/arb/`.
    git remote add upstream https://github.com/zarzet/SpotiFLAC-Mobile.git
    ```
 
-3. **Install dependencies**
+3. **Use FVM (Flutter Version: 3.38.1)**
+   ```bash
+   fvm use
+   ```
+
+4. **Install dependencies**
    ```bash
    flutter pub get
    ```
 
-4. **Generate code** (for Riverpod, JSON serialization, etc.)
+5. **Generate code** (for Riverpod, JSON serialization, etc.)
    ```bash
    dart run build_runner build --delete-conflicting-outputs
    ```
 
-5. **Run the app**
+6. **Set up Go environment (Go Version: 1.25.7)**
+   ```bash
+   cd go_backend 
+   mkdir -p ../android/app/libs
+   gomobile init
+   gomobile bind -target=android -androidapi 24 -o ../android/app/libs/gobackend.aar .
+   cd ..
+   ```
+
+7. **Run the app**
    ```bash
    flutter run
    ```
