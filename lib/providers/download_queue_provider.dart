@@ -1651,12 +1651,23 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     String folderOrganization, {
     bool separateSingles = false,
     String albumFolderStructure = 'artist_album',
+    bool createPlaylistFolder = false,
     bool useAlbumArtistForFolders = true,
     bool usePrimaryArtistOnly = false,
     bool filterContributingArtistsInAlbumArtist = false,
     String? playlistName,
   }) async {
     String baseDir = state.outputDir;
+    if (createPlaylistFolder &&
+        folderOrganization != 'playlist' &&
+        playlistName != null &&
+        playlistName.isNotEmpty) {
+      final playlistFolder = _sanitizeFolderName(playlistName);
+      if (playlistFolder.isNotEmpty) {
+        baseDir = '$baseDir${Platform.pathSeparator}$playlistFolder';
+        await _ensureDirExists(baseDir, label: 'Playlist folder');
+      }
+    }
     final normalizedAlbumArtist = normalizeOptionalString(track.albumArtist);
     var folderArtist = useAlbumArtistForFolders
         ? normalizedAlbumArtist ?? track.artistName
@@ -1809,11 +1820,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     String folderOrganization, {
     bool separateSingles = false,
     String albumFolderStructure = 'artist_album',
+    bool createPlaylistFolder = false,
     bool useAlbumArtistForFolders = true,
     bool usePrimaryArtistOnly = false,
     bool filterContributingArtistsInAlbumArtist = false,
     String? playlistName,
   }) async {
+    final playlistPrefix =
+        createPlaylistFolder &&
+            folderOrganization != 'playlist' &&
+            playlistName != null &&
+            playlistName.isNotEmpty
+        ? _sanitizeFolderName(playlistName)
+        : '';
     final normalizedAlbumArtist = normalizeOptionalString(track.albumArtist);
     var folderArtist = useAlbumArtistForFolders
         ? normalizedAlbumArtist ?? track.artistName
@@ -1833,34 +1852,40 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
       if (albumFolderStructure == 'artist_album_singles') {
         if (isSingle) {
-          return '$artistName/Singles';
+          return _joinRelativePath(playlistPrefix, '$artistName/Singles');
         }
         final albumName = _sanitizeFolderName(track.albumName);
-        return '$artistName/$albumName';
+        return _joinRelativePath(playlistPrefix, '$artistName/$albumName');
       }
 
       if (isSingle) {
-        return 'Singles';
+        return _joinRelativePath(playlistPrefix, 'Singles');
       }
 
       final albumName = _sanitizeFolderName(track.albumName);
       final year = _extractYear(track.releaseDate);
       switch (albumFolderStructure) {
         case 'album_only':
-          return 'Albums/$albumName';
+          return _joinRelativePath(playlistPrefix, 'Albums/$albumName');
         case 'artist_year_album':
           final yearAlbum = year != null ? '[$year] $albumName' : albumName;
-          return 'Albums/$artistName/$yearAlbum';
+          return _joinRelativePath(
+            playlistPrefix,
+            'Albums/$artistName/$yearAlbum',
+          );
         case 'year_album':
           final yearAlbum = year != null ? '[$year] $albumName' : albumName;
-          return 'Albums/$yearAlbum';
+          return _joinRelativePath(playlistPrefix, 'Albums/$yearAlbum');
         default:
-          return 'Albums/$artistName/$albumName';
+          return _joinRelativePath(
+            playlistPrefix,
+            'Albums/$artistName/$albumName',
+          );
       }
     }
 
     if (folderOrganization == 'none') {
-      return '';
+      return playlistPrefix;
     }
 
     switch (folderOrganization) {
@@ -1870,16 +1895,28 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         }
         return '';
       case 'artist':
-        return _sanitizeFolderName(folderArtist);
+        return _joinRelativePath(
+          playlistPrefix,
+          _sanitizeFolderName(folderArtist),
+        );
       case 'album':
-        return _sanitizeFolderName(track.albumName);
+        return _joinRelativePath(
+          playlistPrefix,
+          _sanitizeFolderName(track.albumName),
+        );
       case 'artist_album':
         final artistName = _sanitizeFolderName(folderArtist);
         final albumName = _sanitizeFolderName(track.albumName);
-        return '$artistName/$albumName';
+        return _joinRelativePath(playlistPrefix, '$artistName/$albumName');
       default:
-        return '';
+        return playlistPrefix;
     }
+  }
+
+  String _joinRelativePath(String prefix, String suffix) {
+    if (prefix.isEmpty) return suffix;
+    if (suffix.isEmpty) return prefix;
+    return '$prefix/$suffix';
   }
 
   String _determineOutputExt(String quality, String service) {
@@ -3547,6 +3584,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               settings.folderOrganization,
               separateSingles: settings.separateSingles,
               albumFolderStructure: settings.albumFolderStructure,
+              createPlaylistFolder: settings.createPlaylistFolder,
               useAlbumArtistForFolders: settings.useAlbumArtistForFolders,
               usePrimaryArtistOnly: settings.usePrimaryArtistOnly,
               filterContributingArtistsInAlbumArtist:
@@ -3562,6 +3600,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               settings.folderOrganization,
               separateSingles: settings.separateSingles,
               albumFolderStructure: settings.albumFolderStructure,
+              createPlaylistFolder: settings.createPlaylistFolder,
               useAlbumArtistForFolders: settings.useAlbumArtistForFolders,
               usePrimaryArtistOnly: settings.usePrimaryArtistOnly,
               filterContributingArtistsInAlbumArtist:
@@ -3905,10 +3944,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           settings.folderOrganization,
           separateSingles: settings.separateSingles,
           albumFolderStructure: settings.albumFolderStructure,
+          createPlaylistFolder: settings.createPlaylistFolder,
           useAlbumArtistForFolders: settings.useAlbumArtistForFolders,
           usePrimaryArtistOnly: settings.usePrimaryArtistOnly,
           filterContributingArtistsInAlbumArtist:
               settings.filterContributingArtistsInAlbumArtist,
+          playlistName: item.playlistName,
         );
         final fallbackResult = await runDownload(
           useSaf: false,

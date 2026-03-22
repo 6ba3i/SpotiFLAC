@@ -23,6 +23,7 @@ AppSettings _$AppSettingsFromJson(Map<String, dynamic> json) => AppSettings(
   updateChannel: json['updateChannel'] as String? ?? 'stable',
   hasSearchedBefore: json['hasSearchedBefore'] as bool? ?? false,
   folderOrganization: json['folderOrganization'] as String? ?? 'none',
+  createPlaylistFolder: json['createPlaylistFolder'] as bool? ?? false,
   useAlbumArtistForFolders: json['useAlbumArtistForFolders'] as bool? ?? true,
   usePrimaryArtistOnly: json['usePrimaryArtistOnly'] as bool? ?? false,
   filterContributingArtistsInAlbumArtist:
@@ -100,6 +101,7 @@ Map<String, dynamic> _$AppSettingsToJson(
   'updateChannel': instance.updateChannel,
   'hasSearchedBefore': instance.hasSearchedBefore,
   'folderOrganization': instance.folderOrganization,
+  'createPlaylistFolder': instance.createPlaylistFolder,
   'useAlbumArtistForFolders': instance.useAlbumArtistForFolders,
   'usePrimaryArtistOnly': instance.usePrimaryArtistOnly,
   'filterContributingArtistsInAlbumArtist':

@@ -4659,6 +4659,30 @@ abstract class AppLocalizations {
   /// **'Artist Name Filters'**
   String get downloadArtistNameFilters;
 
+  /// Setting title for adding a playlist folder prefix before the normal organization structure
+  ///
+  /// In en, this message translates to:
+  /// **'Create playlist source folder'**
+  String get downloadCreatePlaylistSourceFolder;
+
+  /// Subtitle when playlist source folder prefix is enabled
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist downloads use Playlist/ plus your normal folder structure.'**
+  String get downloadCreatePlaylistSourceFolderEnabled;
+
+  /// Subtitle when playlist source folder prefix is disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist downloads use the normal folder structure only.'**
+  String get downloadCreatePlaylistSourceFolderDisabled;
+
+  /// Subtitle when playlist folder prefix setting is redundant because folder organization is already by playlist
+  ///
+  /// In en, this message translates to:
+  /// **'By Playlist already places downloads inside a playlist folder.'**
+  String get downloadCreatePlaylistSourceFolderRedundant;
+
   /// Setting title for SongLink country region
   ///
   /// In en, this message translates to:

@@ -375,6 +375,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setCreatePlaylistFolder(bool enabled) {
+    state = state.copyWith(createPlaylistFolder: enabled);
+    _saveSettings();
+  }
+
   void setUseAlbumArtistForFolders(bool enabled) {
     state = state.copyWith(useAlbumArtistForFolders: enabled);
     _saveSettings();

@@ -20,6 +20,7 @@ class AppSettings {
   final String updateChannel;
   final bool hasSearchedBefore;
   final String folderOrganization;
+  final bool createPlaylistFolder;
   final bool useAlbumArtistForFolders;
   final bool usePrimaryArtistOnly; // Strip featured artists from folder name
   final bool filterContributingArtistsInAlbumArtist;
@@ -96,6 +97,7 @@ class AppSettings {
     this.updateChannel = 'stable',
     this.hasSearchedBefore = false,
     this.folderOrganization = 'none',
+    this.createPlaylistFolder = false,
     this.useAlbumArtistForFolders = true,
     this.usePrimaryArtistOnly = false,
     this.filterContributingArtistsInAlbumArtist = false,
@@ -159,6 +161,7 @@ class AppSettings {
     String? updateChannel,
     bool? hasSearchedBefore,
     String? folderOrganization,
+    bool? createPlaylistFolder,
     bool? useAlbumArtistForFolders,
     bool? usePrimaryArtistOnly,
     bool? filterContributingArtistsInAlbumArtist,
@@ -215,6 +218,7 @@ class AppSettings {
       updateChannel: updateChannel ?? this.updateChannel,
       hasSearchedBefore: hasSearchedBefore ?? this.hasSearchedBefore,
       folderOrganization: folderOrganization ?? this.folderOrganization,
+      createPlaylistFolder: createPlaylistFolder ?? this.createPlaylistFolder,
       useAlbumArtistForFolders:
           useAlbumArtistForFolders ?? this.useAlbumArtistForFolders,
       usePrimaryArtistOnly: usePrimaryArtistOnly ?? this.usePrimaryArtistOnly,
@@ -255,8 +259,7 @@ class AppSettings {
       localLibraryBookmark: localLibraryBookmark ?? this.localLibraryBookmark,
       localLibraryShowDuplicates:
           localLibraryShowDuplicates ?? this.localLibraryShowDuplicates,
-      localLibraryAutoScan:
-          localLibraryAutoScan ?? this.localLibraryAutoScan,
+      localLibraryAutoScan: localLibraryAutoScan ?? this.localLibraryAutoScan,
       hasCompletedTutorial: hasCompletedTutorial ?? this.hasCompletedTutorial,
       lyricsProviders: lyricsProviders ?? this.lyricsProviders,
       lyricsIncludeTranslationNetease:

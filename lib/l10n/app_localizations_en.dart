@@ -2686,6 +2686,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadArtistNameFilters => 'Artist Name Filters';
 
   @override
+  String get downloadCreatePlaylistSourceFolder =>
+      'Create playlist source folder';
+
+  @override
+  String get downloadCreatePlaylistSourceFolderEnabled =>
+      'Playlist downloads use Playlist/ plus your normal folder structure.';
+
+  @override
+  String get downloadCreatePlaylistSourceFolderDisabled =>
+      'Playlist downloads use the normal folder structure only.';
+
+  @override
+  String get downloadCreatePlaylistSourceFolderRedundant =>
+      'By Playlist already places downloads inside a playlist folder.';
+
+  @override
   String get downloadSongLinkRegion => 'SongLink Region';
 
   @override

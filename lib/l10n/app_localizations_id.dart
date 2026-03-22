@@ -2693,6 +2693,22 @@ class AppLocalizationsId extends AppLocalizations {
   String get downloadArtistNameFilters => 'Artist Name Filters';
 
   @override
+  String get downloadCreatePlaylistSourceFolder =>
+      'Buat folder sumber playlist';
+
+  @override
+  String get downloadCreatePlaylistSourceFolderEnabled =>
+      'Unduhan dari playlist memakai Playlist/ lalu struktur folder normal Anda.';
+
+  @override
+  String get downloadCreatePlaylistSourceFolderDisabled =>
+      'Unduhan dari playlist hanya memakai struktur folder normal.';
+
+  @override
+  String get downloadCreatePlaylistSourceFolderRedundant =>
+      'Mode Berdasarkan Playlist sudah menaruh unduhan ke dalam folder playlist.';
+
+  @override
   String get downloadSongLinkRegion => 'SongLink Region';
 
   @override

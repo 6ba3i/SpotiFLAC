@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
@@ -436,7 +437,8 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                   ],
                   SettingsItem(
                     title: context.l10n.youtubeOpusBitrateTitle,
-                    subtitle: '${settings.youtubeOpusBitrate}kbps (128/256/320)',
+                    subtitle:
+                        '${settings.youtubeOpusBitrate}kbps (128/256/320)',
                     onTap: () => _showYoutubeBitratePicker(
                       context: context,
                       title: context.l10n.youtubeOpusBitrateTitle,
@@ -515,8 +517,12 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                       icon: Icons.translate_outlined,
                       title: context.l10n.downloadNeteaseIncludeTranslation,
                       subtitle: settings.lyricsIncludeTranslationNetease
-                          ? context.l10n.downloadNeteaseIncludeTranslationEnabled
-                          : context.l10n.downloadNeteaseIncludeTranslationDisabled,
+                          ? context
+                                .l10n
+                                .downloadNeteaseIncludeTranslationEnabled
+                          : context
+                                .l10n
+                                .downloadNeteaseIncludeTranslationDisabled,
                       value: settings.lyricsIncludeTranslationNetease,
                       onChanged: (value) => ref
                           .read(settingsProvider.notifier)
@@ -526,8 +532,12 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                       icon: Icons.text_fields_outlined,
                       title: context.l10n.downloadNeteaseIncludeRomanization,
                       subtitle: settings.lyricsIncludeRomanizationNetease
-                          ? context.l10n.downloadNeteaseIncludeRomanizationEnabled
-                          : context.l10n.downloadNeteaseIncludeRomanizationDisabled,
+                          ? context
+                                .l10n
+                                .downloadNeteaseIncludeRomanizationEnabled
+                          : context
+                                .l10n
+                                .downloadNeteaseIncludeRomanizationDisabled,
                       value: settings.lyricsIncludeRomanizationNetease,
                       onChanged: (value) => ref
                           .read(settingsProvider.notifier)
@@ -628,6 +638,15 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                       ),
                     ),
                   SettingsSwitchItem(
+                    icon: Icons.playlist_play_outlined,
+                    title: context.l10n.downloadCreatePlaylistSourceFolder,
+                    subtitle: _getPlaylistFolderSubtitle(settings),
+                    value: settings.createPlaylistFolder,
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setCreatePlaylistFolder(value),
+                  ),
+                  SettingsSwitchItem(
                     icon: Icons.person_search_outlined,
                     title: context.l10n.downloadUseAlbumArtistForFolders,
                     subtitle: settings.useAlbumArtistForFolders
@@ -642,7 +661,7 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                         .read(settingsProvider.notifier)
                         .setUseAlbumArtistForFolders(value),
                   ),
-                    SettingsItem(
+                  SettingsItem(
                     icon: Icons.filter_alt_outlined,
                     title: context.l10n.downloadArtistNameFilters,
                     subtitle: _getArtistFolderFilterSubtitle(
@@ -1407,6 +1426,16 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
     }
   }
 
+  String _getPlaylistFolderSubtitle(AppSettings settings) {
+    if (settings.folderOrganization == 'playlist') {
+      return context.l10n.downloadCreatePlaylistSourceFolderRedundant;
+    }
+    if (settings.createPlaylistFolder) {
+      return context.l10n.downloadCreatePlaylistSourceFolderEnabled;
+    }
+    return context.l10n.downloadCreatePlaylistSourceFolderDisabled;
+  }
+
   String _getArtistFolderFilterSubtitle(
     BuildContext context, {
     required bool usePrimaryArtistOnly,
@@ -1776,17 +1805,17 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Text(
-                context.l10n.downloadSongLinkRegion,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                child: Text(
+                  context.l10n.downloadSongLinkRegion,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              child: Text(
-                context.l10n.downloadSongLinkRegionDesc,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                child: Text(
+                  context.l10n.downloadSongLinkRegionDesc,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -1847,12 +1876,12 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Text(
-                context.l10n.downloadFolderOrganization,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
+                child: Text(
+                  context.l10n.downloadFolderOrganization,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
