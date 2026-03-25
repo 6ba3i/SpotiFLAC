@@ -360,11 +360,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     );
   }
 
-  int _readStartupCursor(
-    SharedPreferences prefs,
-    String key,
-    int totalCount,
-  ) {
+  int _readStartupCursor(SharedPreferences prefs, String key, int totalCount) {
     if (totalCount <= 0) {
       return 0;
     }
@@ -436,7 +432,10 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       _startupSafRepairCursorKey,
       candidateIndexes.length,
     );
-    final endCursor = (startCursor + maxItems).clamp(0, candidateIndexes.length);
+    final endCursor = (startCursor + maxItems).clamp(
+      0,
+      candidateIndexes.length,
+    );
     final selectedIndexes = candidateIndexes.sublist(startCursor, endCursor);
 
     if (selectedIndexes.isEmpty) {
@@ -648,7 +647,10 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         _startupAudioCursorKey,
         candidateIndexes.length,
       );
-      final endCursor = (startCursor + maxItems).clamp(0, candidateIndexes.length);
+      final endCursor = (startCursor + maxItems).clamp(
+        0,
+        candidateIndexes.length,
+      );
       final selectedIndexes = candidateIndexes.sublist(startCursor, endCursor);
 
       if (selectedIndexes.isEmpty) {
@@ -911,7 +913,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       Map<String, String> replacementPaths,
       Map<String, String> pathById,
     })
-  > _inspectOrphanedEntries(List<Map<String, dynamic>> entries) async {
+  >
+  _inspectOrphanedEntries(List<Map<String, dynamic>> entries) async {
     final orphanedIds = <String>[];
     final replacementPaths = <String, String>{};
     final pathById = <String, String>{};
@@ -934,7 +937,9 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
 
             final sibling = await _findConvertedSibling(filePath);
             if (sibling != null) {
-              _historyLog.i('Found converted sibling for $id: $filePath -> $sibling');
+              _historyLog.i(
+                'Found converted sibling for $id: $filePath -> $sibling',
+              );
               replacementPaths[id] = sibling;
               pathById[id] = sibling;
               return MapEntry(id, true);
@@ -3894,13 +3899,106 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         }
       }
 
+      // For tidal:/qobuz: tracks without ISRC, resolve ISRC from provider
+      // API directly (faster than SongLink and avoids rate limits).
+      if (deezerTrackId == null &&
+          (trackToDownload.isrc == null ||
+              trackToDownload.isrc!.isEmpty ||
+              !_isValidISRC(trackToDownload.isrc!)) &&
+          (trackToDownload.id.startsWith('tidal:') ||
+              trackToDownload.id.startsWith('qobuz:'))) {
+        try {
+          final colonIdx = trackToDownload.id.indexOf(':');
+          final provider = trackToDownload.id.substring(0, colonIdx);
+          final providerTrackId = trackToDownload.id.substring(colonIdx + 1);
+
+          _log.d('No ISRC, fetching from $provider API: $providerTrackId');
+          final providerData = provider == 'tidal'
+              ? await PlatformBridge.getTidalMetadata('track', providerTrackId)
+              : await PlatformBridge.getQobuzMetadata('track', providerTrackId);
+
+          final trackData = providerData['track'] as Map<String, dynamic>?;
+          if (trackData != null) {
+            final resolvedIsrc = normalizeOptionalString(
+              trackData['isrc'] as String?,
+            );
+
+            if (resolvedIsrc != null && _isValidISRC(resolvedIsrc)) {
+              _log.d('Resolved ISRC from $provider: $resolvedIsrc');
+
+              // Enrich track with provider metadata
+              final provReleaseDate = normalizeOptionalString(
+                trackData['release_date'] as String?,
+              );
+              final provTrackNum = trackData['track_number'] as int?;
+              final provDiscNum = trackData['disc_number'] as int?;
+
+              trackToDownload = Track(
+                id: trackToDownload.id,
+                name: trackToDownload.name,
+                artistName: trackToDownload.artistName,
+                albumName: trackToDownload.albumName,
+                albumArtist: trackToDownload.albumArtist,
+                artistId: trackToDownload.artistId,
+                albumId: trackToDownload.albumId,
+                coverUrl: normalizeCoverReference(trackToDownload.coverUrl),
+                duration: trackToDownload.duration,
+                isrc: resolvedIsrc,
+                trackNumber:
+                    (trackToDownload.trackNumber != null &&
+                        trackToDownload.trackNumber! > 0)
+                    ? trackToDownload.trackNumber
+                    : provTrackNum,
+                discNumber:
+                    (trackToDownload.discNumber != null &&
+                        trackToDownload.discNumber! > 0)
+                    ? trackToDownload.discNumber
+                    : provDiscNum,
+                releaseDate: trackToDownload.releaseDate ?? provReleaseDate,
+                deezerId: trackToDownload.deezerId,
+                availability: trackToDownload.availability,
+                albumType: trackToDownload.albumType,
+                totalTracks: trackToDownload.totalTracks,
+                source: trackToDownload.source,
+              );
+
+              // Search Deezer by the resolved ISRC
+              try {
+                final deezerResult = await PlatformBridge.searchDeezerByISRC(
+                  resolvedIsrc,
+                );
+                if (deezerResult['success'] == true &&
+                    deezerResult['track_id'] != null) {
+                  deezerTrackId = deezerResult['track_id'].toString();
+                  _log.d(
+                    'Found Deezer track ID via $provider ISRC: $deezerTrackId',
+                  );
+                }
+              } catch (e) {
+                _log.w('Failed to search Deezer by $provider ISRC: $e');
+              }
+            }
+          }
+        } catch (e) {
+          _log.w('Failed to resolve ISRC from provider: $e');
+        }
+
+        if (shouldAbortWork('during provider ISRC resolution')) {
+          return;
+        }
+      }
+
       // Fallback: Use SongLink to convert Spotify ID to Deezer ID
+      // Skip for tidal:/qobuz: IDs – they are not Spotify URLs and the
+      // provider ISRC resolution above already handles them.
       if (!selectedExtensionDownloadProvider &&
           deezerTrackId == null &&
           !shouldSkipExtensionSongLinkPrelookup &&
           trackToDownload.id.isNotEmpty &&
           !trackToDownload.id.startsWith('deezer:') &&
-          !trackToDownload.id.startsWith('extension:')) {
+          !trackToDownload.id.startsWith('extension:') &&
+          !trackToDownload.id.startsWith('tidal:') &&
+          !trackToDownload.id.startsWith('qobuz:')) {
         try {
           String spotifyId = trackToDownload.id;
           if (spotifyId.startsWith('spotify:track:')) {
