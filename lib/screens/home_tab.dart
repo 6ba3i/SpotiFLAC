@@ -280,13 +280,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
   double _exploreCardSize(BuildContext context) {
     final scale = _responsiveScale(context: context, min: 0.82, max: 1.08);
     final textScale = _effectiveTextScale(context);
-    return 120 * scale * (1 + (textScale - 1) * 0.12);
+    return 145 * scale * (1 + (textScale - 1) * 0.12);
   }
 
   double _exploreSectionHeight(BuildContext context) {
     final cardSize = _exploreCardSize(context);
     final textScale = _effectiveTextScale(context);
-    return cardSize + 55 + ((textScale - 1) * 12);
+    return cardSize + 58 + ((textScale - 1) * 12);
   }
 
   @override
@@ -1485,7 +1485,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
         delegate: SliverChildBuilderDelegate((context, index) {
           if (hasGreeting && index == 0) {
             return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
                 greeting,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -1500,7 +1500,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
             return _buildExploreSection(sections[sectionIndex], colorScheme);
           }
 
-          return const SizedBox(height: 16);
+          return const SizedBox(height: 24);
         }, childCount: totalCount),
       ),
     ];
@@ -1516,7 +1516,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
           child: Text(
             section.title,
             style: Theme.of(
@@ -1579,7 +1579,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(
-                    isArtist ? cardSize / 2 : 8,
+                    isArtist ? cardSize / 2 : 10,
                   ),
                   child: item.coverUrl != null && item.coverUrl!.isNotEmpty
                       ? CachedNetworkImage(
@@ -1618,8 +1618,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: isArtist ? TextAlign.center : TextAlign.start,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w500,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                     color: colorScheme.onSurface,
                   ),
                 ),
@@ -1632,7 +1632,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontSize: 11,
+                      fontSize: 12,
                     ),
                   ),
               ],

@@ -324,16 +324,9 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
           _log.i('Skipped $skippedDownloads files already in download history');
         }
 
-        // Full scan should replace library index entirely.
-        await _db.clearAll();
-        if (items.isNotEmpty) {
-          await _db.upsertBatch(items.map((e) => e.toJson()).toList());
-        }
-        final persistedItems =
-            (await _db.getAll())
-                .map(LocalLibraryItem.fromJson)
-                .toList(growable: false)
-              ..sort(_compareLibraryItems);
+        // Full scan should replace library index atomically.
+        await _db.replaceAll(items.map((e) => e.toJson()).toList());
+        final persistedItems = [...items]..sort(_compareLibraryItems);
 
         final now = DateTime.now();
         try {
@@ -502,11 +495,8 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
           _log.i('Deleted $deleteCount items from database');
         }
 
-        final items =
-            (await _db.getAll())
-                .map(LocalLibraryItem.fromJson)
-                .toList(growable: false)
-              ..sort(_compareLibraryItems);
+        final items = currentByPath.values.toList(growable: false)
+          ..sort(_compareLibraryItems);
 
         final now = DateTime.now();
         try {

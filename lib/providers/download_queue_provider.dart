@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/models/download_item.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
@@ -262,8 +263,14 @@ class DownloadHistoryState {
 class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
   static const int _safRepairBatchSize = 20;
   static const int _safRepairMaxPerLaunch = 60;
+  static const int _orphanCleanupMaxPerLaunch = 80;
   static const int _audioMetadataBackfillMaxPerLaunch = 24;
-  static const _startupMaintenanceDelay = Duration(seconds: 2);
+  static const _startupMaintenanceDelay = Duration(seconds: 4);
+  static const _startupMaintenanceStepGap = Duration(milliseconds: 250);
+  static const _startupSafRepairCursorKey =
+      'history_startup_saf_repair_cursor_v1';
+  static const _startupOrphanCursorKey = 'history_startup_orphan_cursor_v1';
+  static const _startupAudioCursorKey = 'history_startup_audio_cursor_v1';
   final HistoryDatabase _db = HistoryDatabase.instance;
   bool _isLoaded = false;
   bool _isSafRepairInProgress = false;
@@ -320,20 +327,29 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     unawaited(
       Future<void>.delayed(_startupMaintenanceDelay, () async {
         try {
+          final prefs = await SharedPreferences.getInstance();
+
           if (Platform.isAndroid) {
             await _repairMissingSafEntries(
               initialItems,
               maxItems: _safRepairMaxPerLaunch,
+              prefs: prefs,
             );
+            await Future<void>.delayed(_startupMaintenanceStepGap);
           }
 
-          await cleanupOrphanedDownloads();
+          await _cleanupOrphanedDownloadsIncremental(
+            maxItems: _orphanCleanupMaxPerLaunch,
+            prefs: prefs,
+          );
+          await Future<void>.delayed(_startupMaintenanceStepGap);
 
           final currentItems = state.items;
           if (currentItems.isNotEmpty) {
             await _backfillAudioMetadata(
               currentItems,
               maxItems: _audioMetadataBackfillMaxPerLaunch,
+              prefs: prefs,
             );
           }
         } catch (e, stack) {
@@ -342,6 +358,34 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         }
       }),
     );
+  }
+
+  int _readStartupCursor(
+    SharedPreferences prefs,
+    String key,
+    int totalCount,
+  ) {
+    if (totalCount <= 0) {
+      return 0;
+    }
+    final cursor = prefs.getInt(key) ?? 0;
+    if (cursor < 0 || cursor >= totalCount) {
+      return 0;
+    }
+    return cursor;
+  }
+
+  Future<void> _writeStartupCursor(
+    SharedPreferences prefs,
+    String key,
+    int nextCursor,
+    int totalCount,
+  ) async {
+    if (totalCount <= 0 || nextCursor <= 0 || nextCursor >= totalCount) {
+      await prefs.remove(key);
+      return;
+    }
+    await prefs.setInt(key, nextCursor);
   }
 
   String _fileNameFromUri(String uri) {
@@ -357,6 +401,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
   Future<void> _repairMissingSafEntries(
     List<DownloadHistoryItem> items, {
     required int maxItems,
+    required SharedPreferences prefs,
   }) async {
     if (_isSafRepairInProgress || items.isEmpty) {
       return;
@@ -378,22 +423,37 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         continue;
       }
       candidateIndexes.add(i);
-      if (candidateIndexes.length >= maxItems) break;
     }
 
     if (candidateIndexes.isEmpty) {
+      await prefs.remove(_startupSafRepairCursorKey);
+      _isSafRepairInProgress = false;
+      return;
+    }
+
+    final startCursor = _readStartupCursor(
+      prefs,
+      _startupSafRepairCursorKey,
+      candidateIndexes.length,
+    );
+    final endCursor = (startCursor + maxItems).clamp(0, candidateIndexes.length);
+    final selectedIndexes = candidateIndexes.sublist(startCursor, endCursor);
+
+    if (selectedIndexes.isEmpty) {
+      await prefs.remove(_startupSafRepairCursorKey);
       _isSafRepairInProgress = false;
       return;
     }
 
     final updatedItems = [...items];
+    final persistedUpdates = <Map<String, dynamic>>[];
     var changed = false;
     var repairedCount = 0;
     var verifiedCount = 0;
 
     try {
-      for (var c = 0; c < candidateIndexes.length; c++) {
-        final i = candidateIndexes[c];
+      for (var c = 0; c < selectedIndexes.length; c++) {
+        final i = selectedIndexes[c];
         final item = items[i];
         final rawPath = item.filePath.trim();
         final isDirectSafUri = rawPath.isNotEmpty && isContentUri(rawPath);
@@ -408,7 +468,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
             updatedItems[i] = verified;
             changed = true;
             verifiedCount++;
-            await _db.upsert(verified.toJson());
+            persistedUpdates.add(verified.toJson());
             continue;
           }
         }
@@ -445,7 +505,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
           updatedItems[i] = updated;
           changed = true;
           repairedCount++;
-          await _db.upsert(updated.toJson());
+          persistedUpdates.add(updated.toJson());
         } catch (e) {
           _historyLog.w('Failed to repair SAF URI: $e');
         }
@@ -456,11 +516,18 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       }
 
       if (changed) {
+        await _db.upsertBatch(persistedUpdates);
         state = state.copyWith(items: updatedItems);
         _historyLog.i(
-          'SAF repair pass: verified=$verifiedCount, repaired=$repairedCount, checked=${candidateIndexes.length}',
+          'SAF repair pass: verified=$verifiedCount, repaired=$repairedCount, checked=${selectedIndexes.length}',
         );
       }
+      await _writeStartupCursor(
+        prefs,
+        _startupSafRepairCursorKey,
+        endCursor,
+        candidateIndexes.length,
+      );
     } finally {
       _isSafRepairInProgress = false;
     }
@@ -556,6 +623,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
   Future<void> _backfillAudioMetadata(
     List<DownloadHistoryItem> items, {
     required int maxItems,
+    required SharedPreferences prefs,
   }) async {
     if (_isAudioMetadataBackfillInProgress || items.isEmpty) {
       return;
@@ -563,15 +631,37 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     _isAudioMetadataBackfillInProgress = true;
 
     try {
+      final candidateIndexes = <int>[];
+      for (var i = 0; i < items.length; i++) {
+        if (_shouldBackfillAudioMetadata(items[i])) {
+          candidateIndexes.add(i);
+        }
+      }
+
+      if (candidateIndexes.isEmpty) {
+        await prefs.remove(_startupAudioCursorKey);
+        return;
+      }
+
+      final startCursor = _readStartupCursor(
+        prefs,
+        _startupAudioCursorKey,
+        candidateIndexes.length,
+      );
+      final endCursor = (startCursor + maxItems).clamp(0, candidateIndexes.length);
+      final selectedIndexes = candidateIndexes.sublist(startCursor, endCursor);
+
+      if (selectedIndexes.isEmpty) {
+        await prefs.remove(_startupAudioCursorKey);
+        return;
+      }
+
+      List<DownloadHistoryItem>? updatedItems;
+      final persistedUpdates = <Map<String, dynamic>>[];
       var refreshedCount = 0;
 
-      for (final item in items) {
-        if (refreshedCount >= maxItems) {
-          break;
-        }
-        if (!_shouldBackfillAudioMetadata(item)) {
-          continue;
-        }
+      for (final index in selectedIndexes) {
+        final item = items[index];
 
         final probed = await _probeAudioMetadata(
           item.filePath,
@@ -598,14 +688,28 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
           continue;
         }
 
-        await updateAudioMetadataForItem(
-          id: item.id,
+        final updated = item.copyWith(
           quality: resolvedQuality,
           bitDepth: resolvedBitDepth,
           sampleRate: resolvedSampleRate,
         );
+        updatedItems ??= [...items];
+        updatedItems[index] = updated;
+        persistedUpdates.add(updated.toJson());
         refreshedCount++;
       }
+
+      if (persistedUpdates.isNotEmpty && updatedItems != null) {
+        await _db.upsertBatch(persistedUpdates);
+        state = state.copyWith(items: updatedItems);
+      }
+
+      await _writeStartupCursor(
+        prefs,
+        _startupAudioCursorKey,
+        endCursor,
+        candidateIndexes.length,
+      );
 
       if (refreshedCount > 0) {
         _historyLog.i(
@@ -801,11 +905,15 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     return null;
   }
 
-  Future<int> cleanupOrphanedDownloads() async {
-    _historyLog.i('Starting orphaned downloads cleanup...');
-
-    final entries = await _db.getAllEntriesWithPaths();
+  Future<
+    ({
+      List<String> orphanedIds,
+      Map<String, String> replacementPaths,
+      Map<String, String> pathById,
+    })
+  > _inspectOrphanedEntries(List<Map<String, dynamic>> entries) async {
     final orphanedIds = <String>[];
+    final replacementPaths = <String, String>{};
     final pathById = <String, String>{};
     const checkChunkSize = 16;
 
@@ -824,14 +932,10 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
           try {
             if (await fileExists(filePath)) return MapEntry(id, true);
 
-            // Original file missing -- check for a converted sibling.
             final sibling = await _findConvertedSibling(filePath);
             if (sibling != null) {
-              _historyLog.i(
-                'Found converted sibling for $id: $filePath → $sibling',
-              );
-              // Update the stored path so future checks succeed immediately.
-              await _db.updateFilePath(id, sibling);
+              _historyLog.i('Found converted sibling for $id: $filePath -> $sibling');
+              replacementPaths[id] = sibling;
               pathById[id] = sibling;
               return MapEntry(id, true);
             }
@@ -853,21 +957,127 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       }
     }
 
-    if (orphanedIds.isEmpty) {
+    return (
+      orphanedIds: orphanedIds,
+      replacementPaths: replacementPaths,
+      pathById: pathById,
+    );
+  }
+
+  void _applyHistoryPathAndDeletionChanges({
+    required List<String> deletedIds,
+    required Map<String, String> replacementPaths,
+  }) {
+    if (deletedIds.isEmpty && replacementPaths.isEmpty) {
+      return;
+    }
+    final deletedSet = deletedIds.toSet();
+    final updatedItems = <DownloadHistoryItem>[];
+    for (final item in state.items) {
+      if (deletedSet.contains(item.id)) {
+        continue;
+      }
+      final replacementPath = replacementPaths[item.id];
+      if (replacementPath != null && replacementPath != item.filePath) {
+        updatedItems.add(item.copyWith(filePath: replacementPath));
+      } else {
+        updatedItems.add(item);
+      }
+    }
+    state = state.copyWith(items: updatedItems);
+  }
+
+  Future<int> _cleanupOrphanedDownloadsIncremental({
+    required int maxItems,
+    required SharedPreferences prefs,
+  }) async {
+    final cursor = prefs.getInt(_startupOrphanCursorKey) ?? 0;
+    final safeCursor = cursor < 0 ? 0 : cursor;
+    final entries = await _db.getEntriesWithPathsPage(
+      limit: maxItems,
+      offset: safeCursor,
+    );
+    if (entries.isEmpty) {
+      await prefs.remove(_startupOrphanCursorKey);
+      return 0;
+    }
+
+    final result = await _inspectOrphanedEntries(entries);
+    for (final replacement in result.replacementPaths.entries) {
+      await _db.updateFilePath(replacement.key, replacement.value);
+    }
+
+    final deletedCount = result.orphanedIds.isEmpty
+        ? 0
+        : await _db.deleteByIds(result.orphanedIds);
+
+    _applyHistoryPathAndDeletionChanges(
+      deletedIds: result.orphanedIds,
+      replacementPaths: result.replacementPaths,
+    );
+
+    if (entries.length < maxItems) {
+      await prefs.remove(_startupOrphanCursorKey);
+    } else {
+      final nextCursor =
+          safeCursor + entries.length - result.orphanedIds.length;
+      await prefs.setInt(_startupOrphanCursorKey, nextCursor);
+    }
+
+    if (deletedCount > 0 || result.replacementPaths.isNotEmpty) {
+      _historyLog.i(
+        'Startup orphan cleanup pass: removed=$deletedCount, repaired=${result.replacementPaths.length}, checked=${entries.length}',
+      );
+    }
+    return deletedCount;
+  }
+
+  Future<int> cleanupOrphanedDownloads() async {
+    _historyLog.i('Starting orphaned downloads cleanup...');
+    final orphanedIds = <String>[];
+    final replacementPaths = <String, String>{};
+    const pageSize = 256;
+    var offset = 0;
+
+    while (true) {
+      final entries = await _db.getEntriesWithPathsPage(
+        limit: pageSize,
+        offset: offset,
+      );
+      if (entries.isEmpty) {
+        break;
+      }
+
+      final result = await _inspectOrphanedEntries(entries);
+      orphanedIds.addAll(result.orphanedIds);
+      replacementPaths.addAll(result.replacementPaths);
+
+      if (entries.length < pageSize) {
+        break;
+      }
+      offset += entries.length - result.orphanedIds.length;
+    }
+
+    for (final replacement in replacementPaths.entries) {
+      await _db.updateFilePath(replacement.key, replacement.value);
+    }
+
+    if (orphanedIds.isEmpty && replacementPaths.isEmpty) {
       _historyLog.i('No orphaned entries found');
       return 0;
     }
 
-    final deletedCount = await _db.deleteByIds(orphanedIds);
-
-    final orphanedSet = orphanedIds.toSet();
-    state = state.copyWith(
-      items: state.items
-          .where((item) => !orphanedSet.contains(item.id))
-          .toList(),
+    final deletedCount = orphanedIds.isEmpty
+        ? 0
+        : await _db.deleteByIds(orphanedIds);
+    _applyHistoryPathAndDeletionChanges(
+      deletedIds: orphanedIds,
+      replacementPaths: replacementPaths,
     );
 
-    _historyLog.i('Cleaned up $deletedCount orphaned entries');
+    _historyLog.i(
+      'Cleaned up $deletedCount orphaned entries and repaired ${replacementPaths.length} paths',
+    );
     return deletedCount;
   }
 

@@ -83,24 +83,18 @@ class PlatformBridge {
 
   static Future<Map<String, dynamic>> getDownloadProgress() async {
     final result = await _channel.invokeMethod('getDownloadProgress');
-    return jsonDecode(result as String) as Map<String, dynamic>;
+    return _decodeMapResult(result);
   }
 
   static Future<Map<String, dynamic>> getAllDownloadProgress() async {
     final result = await _channel.invokeMethod('getAllDownloadProgress');
-    return jsonDecode(result as String) as Map<String, dynamic>;
+    return _decodeMapResult(result);
   }
 
   static Stream<Map<String, dynamic>> downloadProgressStream() {
-    return _downloadProgressEvents.receiveBroadcastStream().map((event) {
-      if (event is String) {
-        return jsonDecode(event) as Map<String, dynamic>;
-      }
-      if (event is Map) {
-        return Map<String, dynamic>.from(event);
-      }
-      return const <String, dynamic>{};
-    });
+    return _downloadProgressEvents
+        .receiveBroadcastStream()
+        .map(_decodeMapResult);
   }
 
   static Future<void> exitApp() async {
@@ -1186,24 +1180,32 @@ class PlatformBridge {
   /// Get current library scan progress
   static Future<Map<String, dynamic>> getLibraryScanProgress() async {
     final result = await _channel.invokeMethod('getLibraryScanProgress');
-    return jsonDecode(result as String) as Map<String, dynamic>;
+    return _decodeMapResult(result);
   }
 
   static Stream<Map<String, dynamic>> libraryScanProgressStream() {
-    return _libraryScanProgressEvents.receiveBroadcastStream().map((event) {
-      if (event is String) {
-        return jsonDecode(event) as Map<String, dynamic>;
-      }
-      if (event is Map) {
-        return Map<String, dynamic>.from(event);
-      }
-      return const <String, dynamic>{};
-    });
+    return _libraryScanProgressEvents
+        .receiveBroadcastStream()
+        .map(_decodeMapResult);
   }
 
   /// Cancel ongoing library scan
   static Future<void> cancelLibraryScan() async {
     await _channel.invokeMethod('cancelLibraryScan');
+  }
+
+  static Map<String, dynamic> _decodeMapResult(dynamic result) {
+    if (result is Map) {
+      return Map<String, dynamic>.from(result);
+    }
+    if (result is String) {
+      if (result.isEmpty) return const <String, dynamic>{};
+      final decoded = jsonDecode(result);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    }
+    return const <String, dynamic>{};
   }
 
   // MARK: - iOS Security-Scoped Bookmark

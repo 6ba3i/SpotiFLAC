@@ -328,6 +328,20 @@ class HistoryDatabase {
     );
   }
 
+  Future<void> upsertBatch(List<Map<String, dynamic>> items) async {
+    if (items.isEmpty) return;
+    final db = await database;
+    final batch = db.batch();
+    for (final json in items) {
+      batch.insert(
+        'history',
+        _jsonToDbRow(json),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
   /// Get all history items ordered by download date (newest first)
   Future<List<Map<String, dynamic>>> getAll({int? limit, int? offset}) async {
     final db = await database;
@@ -529,6 +543,29 @@ class HistoryDatabase {
       FROM history 
       WHERE file_path IS NOT NULL AND file_path != ""
     ''');
+    return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getEntriesWithPathsPage({
+    required int limit,
+    int offset = 0,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      'history',
+      columns: [
+        'id',
+        'file_path',
+        'storage_mode',
+        'download_tree_uri',
+        'saf_relative_dir',
+        'saf_file_name',
+      ],
+      where: 'file_path IS NOT NULL AND file_path != ""',
+      orderBy: 'downloaded_at DESC, id DESC',
+      limit: limit,
+      offset: offset,
+    );
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
   }
 

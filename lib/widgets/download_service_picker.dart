@@ -303,7 +303,9 @@ class _DownloadServicePickerState extends ConsumerState<DownloadServicePicker> {
                     ),
                   for (final ext in downloadExtensions)
                     _ServiceChip(
-                      label: ext.displayName,
+                      label: widget.recommendedService == ext.id
+                          ? '${ext.displayName} (Recommended)'
+                          : ext.displayName,
                       isSelected: _selectedService == ext.id,
                       onTap: () => setState(() => _selectedService = ext.id),
                       iconPath: ext.iconPath,

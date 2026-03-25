@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -413,6 +414,38 @@ class MainActivity: FlutterFragmentActivity() {
         }
     }
 
+    private fun parseJsonValue(value: Any?): Any? {
+        return when (value) {
+            null, JSONObject.NULL -> null
+            is JSONObject -> {
+                val map = LinkedHashMap<String, Any?>()
+                val keys = value.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    map[key] = parseJsonValue(value.opt(key))
+                }
+                map
+            }
+            is JSONArray -> {
+                val list = ArrayList<Any?>()
+                for (i in 0 until value.length()) {
+                    list.add(parseJsonValue(value.opt(i)))
+                }
+                list
+            }
+            is Number, is Boolean, is String -> value
+            else -> value.toString()
+        }
+    }
+
+    private fun parseJsonPayload(payload: String): Any {
+        return try {
+            parseJsonValue(JSONTokener(payload).nextValue()) ?: payload
+        } catch (_: Exception) {
+            payload
+        }
+    }
+
     private fun startDownloadProgressStream(sink: EventChannel.EventSink) {
         stopDownloadProgressStream()
         downloadProgressEventSink = sink
@@ -425,7 +458,7 @@ class MainActivity: FlutterFragmentActivity() {
                     }
                     if (payload != lastDownloadProgressPayload) {
                         lastDownloadProgressPayload = payload
-                        sink.success(payload)
+                        sink.success(parseJsonPayload(payload))
                     }
                 } catch (e: Exception) {
                     android.util.Log.w(
@@ -457,7 +490,7 @@ class MainActivity: FlutterFragmentActivity() {
                     }
                     if (payload != lastLibraryScanProgressPayload) {
                         lastLibraryScanProgressPayload = payload
-                        sink.success(payload)
+                        sink.success(parseJsonPayload(payload))
                     }
                 } catch (e: Exception) {
                     android.util.Log.w(
@@ -2000,13 +2033,13 @@ class MainActivity: FlutterFragmentActivity() {
                             val response = withContext(Dispatchers.IO) {
                                 Gobackend.getDownloadProgress()
                             }
-                            result.success(response)
+                            result.success(parseJsonPayload(response))
                         }
                         "getAllDownloadProgress" -> {
                             val response = withContext(Dispatchers.IO) {
                                 Gobackend.getAllDownloadProgress()
                             }
-                            result.success(response)
+                            result.success(parseJsonPayload(response))
                         }
                         "initItemProgress" -> {
                             val itemId = call.argument<String>("item_id") ?: ""
@@ -3298,7 +3331,7 @@ class MainActivity: FlutterFragmentActivity() {
                                     Gobackend.getLibraryScanProgressJSON()
                                 }
                             }
-                            result.success(response)
+                            result.success(parseJsonPayload(response))
                         }
                         "cancelLibraryScan" -> {
                             withContext(Dispatchers.IO) {

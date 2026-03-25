@@ -15,6 +15,7 @@ import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
+import 'package:spotiflac_android/widgets/bottom_sheet_option_tile.dart';
 import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
 
 class LibraryTracksFolderScreen extends ConsumerStatefulWidget {
@@ -1392,7 +1393,7 @@ class _CollectionTrackTile extends ConsumerWidget {
 
             // Add to playlist (hidden in wishlist unless already downloaded)
             if (showAddToPlaylist)
-              _CollectionOptionTile(
+              BottomSheetOptionTile(
                 icon: Icons.playlist_add,
                 title: context.l10n.collectionAddToPlaylist,
                 onTap: () {
@@ -1402,7 +1403,7 @@ class _CollectionTrackTile extends ConsumerWidget {
               ),
 
             // Remove from folder / playlist
-            _CollectionOptionTile(
+            BottomSheetOptionTile(
               icon: Icons.remove_circle_outline,
               iconColor: colorScheme.error,
               title: mode == LibraryTracksFolderMode.playlist
@@ -1539,43 +1540,6 @@ class _CollectionTrackTile extends ConsumerWidget {
 
     // 6. Not found anywhere — offer to download
     _downloadTrack(context, ref);
-  }
-}
-
-/// Styled like _OptionTile in track_collection_quick_actions.dart
-class _CollectionOptionTile extends StatelessWidget {
-  final IconData icon;
-  final Color? iconColor;
-  final String title;
-  final VoidCallback onTap;
-
-  const _CollectionOptionTile({
-    required this.icon,
-    this.iconColor,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          color: iconColor ?? colorScheme.onPrimaryContainer,
-          size: 20,
-        ),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      onTap: onTap,
-    );
   }
 }
 

@@ -2187,12 +2187,6 @@ func LoadExtensionFromPath(filePath string) (string, error) {
 		return "", err
 	}
 
-	settingsStore := GetExtensionSettingsStore()
-	settings := settingsStore.GetAll(ext.ID)
-	if len(settings) > 0 {
-		manager.InitializeExtension(ext.ID, settings)
-	}
-
 	result := map[string]interface{}{
 		"id":           ext.ID,
 		"name":         ext.Manifest.Name,
@@ -2224,12 +2218,6 @@ func UpgradeExtensionFromPath(filePath string) (string, error) {
 	ext, err := manager.UpgradeExtension(filePath)
 	if err != nil {
 		return "", err
-	}
-
-	settingsStore := GetExtensionSettingsStore()
-	settings := settingsStore.GetAll(ext.ID)
-	if len(settings) > 0 {
-		manager.InitializeExtension(ext.ID, settings)
 	}
 
 	result := map[string]interface{}{
@@ -3324,12 +3312,14 @@ func callExtensionFunctionJSON(extensionID, functionName string, timeout time.Du
 	if !ext.Enabled {
 		return "", fmt.Errorf("extension '%s' is disabled", extensionID)
 	}
+	vm, err := ext.lockReadyVM()
+	if err != nil {
+		return "", err
+	}
+	defer ext.VMMu.Unlock()
 
 	// Goja runtime is not thread-safe; guard direct extension.*() calls with VMMu
 	// to avoid races with other provider calls (e.g. getAlbum/getPlaylist).
-	ext.VMMu.Lock()
-	defer ext.VMMu.Unlock()
-
 	script := fmt.Sprintf(`
 		(function() {
 			if (typeof extension !== 'undefined' && typeof extension.%s === 'function') {
@@ -3339,7 +3329,7 @@ func callExtensionFunctionJSON(extensionID, functionName string, timeout time.Du
 		})()
 	`, functionName, functionName)
 
-	result, err := RunWithTimeoutAndRecover(ext.VM, script, timeout)
+	result, err := RunWithTimeoutAndRecover(vm, script, timeout)
 	if err != nil {
 		return "", fmt.Errorf("%s failed: %w", functionName, err)
 	}

@@ -715,6 +715,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   static const int _maxCacheSize = 500;
   static const int _maxSearchIndexCacheSize = 4000;
   bool _embeddedCoverRefreshScheduled = false;
+  // Version counter to trigger targeted cover image rebuilds
+  // without rebuilding the entire widget tree via setState.
+  final ValueNotifier<int> _embeddedCoverVersion = ValueNotifier<int>(0);
 
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = {};
@@ -766,6 +769,12 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   String _localFilterQueryCache = '';
   List<LocalLibraryItem> _filteredLocalItemsCache = const [];
   final Map<String, _UnifiedCacheEntry> _unifiedItemsCache = {};
+  List<DownloadHistoryItem>? _cachedUnifiedDownloadedSource;
+  List<UnifiedLibraryItem> _cachedUnifiedDownloaded = const [];
+  List<LocalLibraryItem>? _cachedUnifiedLocalSource;
+  List<UnifiedLibraryItem> _cachedUnifiedLocal = const [];
+  List<DownloadHistoryItem>? _cachedDownloadedPathKeysSource;
+  Set<String> _cachedDownloadedPathKeys = const <String>{};
   final Map<String, _FilterContentData> _filterContentDataCache = {};
   List<DownloadHistoryItem>? _filterCacheAllHistoryItems;
   _HistoryStats? _filterCacheHistoryStats;
@@ -818,6 +827,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     }
     _fileExistsNotifiers.clear();
     _alwaysMissingFileNotifier.dispose();
+    _embeddedCoverVersion.dispose();
     _filterPageController?.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -898,12 +908,18 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     _historyStatsCache = historyStats;
     if (historyChanged) {
       _searchIndexCache.clear();
+      _cachedUnifiedDownloadedSource = null;
+      _cachedUnifiedDownloaded = const [];
+      _cachedDownloadedPathKeysSource = null;
+      _cachedDownloadedPathKeys = const <String>{};
     }
     if (localChanged) {
       _localSearchIndexCache.clear();
       _localFilterItemsCache = null;
       _localFilterQueryCache = '';
       _filteredLocalItemsCache = const [];
+      _cachedUnifiedLocalSource = null;
+      _cachedUnifiedLocal = const [];
     }
     _unifiedItemsCache.clear();
     _invalidateFilterContentCache();
@@ -950,6 +966,45 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       _localSearchIndexCache.remove(_localSearchIndexCache.keys.first);
     }
     return searchKey;
+  }
+
+  List<UnifiedLibraryItem> _unifiedDownloadedItems(
+    List<DownloadHistoryItem> items,
+  ) {
+    if (identical(items, _cachedUnifiedDownloadedSource)) {
+      return _cachedUnifiedDownloaded;
+    }
+    final unified = items
+        .map(UnifiedLibraryItem.fromDownloadHistory)
+        .toList(growable: false);
+    _cachedUnifiedDownloadedSource = items;
+    _cachedUnifiedDownloaded = unified;
+    return unified;
+  }
+
+  List<UnifiedLibraryItem> _unifiedLocalItems(List<LocalLibraryItem> items) {
+    if (identical(items, _cachedUnifiedLocalSource)) {
+      return _cachedUnifiedLocal;
+    }
+    final unified = items
+        .map(UnifiedLibraryItem.fromLocalLibrary)
+        .toList(growable: false);
+    _cachedUnifiedLocalSource = items;
+    _cachedUnifiedLocal = unified;
+    return unified;
+  }
+
+  Set<String> _downloadedPathKeys(List<DownloadHistoryItem> historyItems) {
+    if (identical(historyItems, _cachedDownloadedPathKeysSource)) {
+      return _cachedDownloadedPathKeys;
+    }
+    final keys = <String>{};
+    for (final item in historyItems) {
+      keys.addAll(buildPathMatchKeys(item.filePath));
+    }
+    _cachedDownloadedPathKeysSource = historyItems;
+    _cachedDownloadedPathKeys = Set<String>.unmodifiable(keys);
+    return _cachedDownloadedPathKeys;
   }
 
   List<LocalLibraryItem> _filterLocalItems(
@@ -1506,7 +1561,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$selectedCount selected',
+                          context.l10n.selectionSelected(selectedCount),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -1533,7 +1588,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                       allSelected ? Icons.deselect : Icons.select_all,
                       size: 20,
                     ),
-                    label: Text(allSelected ? 'Deselect' : 'Select All'),
+                    label: Text(
+                      allSelected
+                          ? context.l10n.actionDeselect
+                          : context.l10n.actionSelectAll,
+                    ),
                     style: TextButton.styleFrom(
                       foregroundColor: colorScheme.primary,
                     ),
@@ -1712,7 +1771,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _embeddedCoverRefreshScheduled = false;
       if (mounted) {
-        setState(() {});
+        // Increment version to trigger ValueListenableBuilder rebuilds
+        // on cover images only, instead of rebuilding the entire widget tree.
+        _embeddedCoverVersion.value++;
       }
     });
   }
@@ -2332,10 +2393,14 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     }
   }
 
-  void _navigateToDownloadedAlbum(_GroupedAlbum album) {
+  /// Navigate with unfocus pattern — unfocuses search before and after navigation.
+  void _navigateWithUnfocus(Route<dynamic> route) {
     _searchFocusNode.unfocus();
-    Navigator.push(
-      context,
+    Navigator.of(context).push(route).then((_) => _searchFocusNode.unfocus());
+  }
+
+  void _navigateToDownloadedAlbum(_GroupedAlbum album) {
+    _navigateWithUnfocus(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 250),
@@ -2348,13 +2413,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
-    ).then((_) => _searchFocusNode.unfocus());
+    );
   }
 
   void _navigateToLocalAlbum(_GroupedLocalAlbum album) {
-    _searchFocusNode.unfocus();
-    Navigator.push(
-      context,
+    _navigateWithUnfocus(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 250),
@@ -2368,47 +2431,38 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
-    ).then((_) => _searchFocusNode.unfocus());
+    );
   }
 
   void _openWishlistFolder() {
-    _searchFocusNode.unfocus();
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (_) => const LibraryTracksFolderScreen(
-              mode: LibraryTracksFolderMode.wishlist,
-            ),
-          ),
-        )
-        .then((_) => _searchFocusNode.unfocus());
+    _navigateWithUnfocus(
+      MaterialPageRoute(
+        builder: (_) => const LibraryTracksFolderScreen(
+          mode: LibraryTracksFolderMode.wishlist,
+        ),
+      ),
+    );
   }
 
   void _openLovedFolder() {
-    _searchFocusNode.unfocus();
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (_) => const LibraryTracksFolderScreen(
-              mode: LibraryTracksFolderMode.loved,
-            ),
-          ),
-        )
-        .then((_) => _searchFocusNode.unfocus());
+    _navigateWithUnfocus(
+      MaterialPageRoute(
+        builder: (_) => const LibraryTracksFolderScreen(
+          mode: LibraryTracksFolderMode.loved,
+        ),
+      ),
+    );
   }
 
   void _openPlaylistById(String playlistId) {
-    _searchFocusNode.unfocus();
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (_) => LibraryTracksFolderScreen(
-              mode: LibraryTracksFolderMode.playlist,
-              playlistId: playlistId,
-            ),
-          ),
-        )
-        .then((_) => _searchFocusNode.unfocus());
+    _navigateWithUnfocus(
+      MaterialPageRoute(
+        builder: (_) => LibraryTracksFolderScreen(
+          mode: LibraryTracksFolderMode.playlist,
+          playlistId: playlistId,
+        ),
+      ),
+    );
   }
 
   Future<void> _showCreatePlaylistDialog(BuildContext context) async {
@@ -2684,7 +2738,21 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     final localLibraryItems = localLibraryEnabled
         ? ref.watch(localLibraryProvider.select((s) => s.items))
         : const <LocalLibraryItem>[];
-    final collectionState = ref.watch(libraryCollectionsProvider);
+    // Watch with selector on key fields to reduce unnecessary rebuilds.
+    // LibraryCollectionsState doesn't implement == so watching without
+    // selector rebuilds on every provider notification.
+    ref.watch(
+      libraryCollectionsProvider.select(
+        (s) => (
+          s.wishlistCount,
+          s.lovedCount,
+          s.playlistCount,
+          s.hasPlaylistTracks,
+          s.isLoaded,
+        ),
+      ),
+    );
+    final collectionState = ref.read(libraryCollectionsProvider);
     final historyStats = ref.watch(_queueHistoryStatsProvider);
     final filteredGrouped = ref.watch(
       _queueFilteredAlbumsProvider(
@@ -2733,20 +2801,27 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       );
     }
 
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final selectionItems = getFilterData(
       historyFilterMode,
     ).filteredUnifiedItems;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncSelectionOverlay(
-        items: selectionItems,
-        bottomPadding: bottomPadding,
-      );
-      _syncPlaylistSelectionOverlay(
-        playlists: collectionState.playlists,
-        bottomPadding: bottomPadding,
-      );
-    });
+    // Only sync overlays when selection mode is active
+    if (_isSelectionMode || _isPlaylistSelectionMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isSelectionMode) {
+          _syncSelectionOverlay(
+            items: selectionItems,
+            bottomPadding: bottomPadding,
+          );
+        }
+        if (_isPlaylistSelectionMode) {
+          _syncPlaylistSelectionOverlay(
+            playlists: collectionState.playlists,
+            bottomPadding: bottomPadding,
+          );
+        }
+      });
+    }
 
     return PopScope(
       canPop: !_isSelectionMode && !_isPlaylistSelectionMode,
@@ -2982,9 +3057,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       return cached.items;
     }
 
-    final unifiedDownloaded = historyItems
-        .map((item) => UnifiedLibraryItem.fromDownloadHistory(item))
-        .toList(growable: false);
+    final unifiedDownloaded = _unifiedDownloadedItems(historyItems);
 
     List<LocalLibraryItem> localItemsForMerge;
     if (filterMode == 'all') {
@@ -2999,14 +3072,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       localItemsForMerge = _filterLocalItems(localSingles, query);
     }
 
-    final unifiedLocal = localItemsForMerge
-        .map((item) => UnifiedLibraryItem.fromLocalLibrary(item))
-        .toList(growable: false);
-
-    final downloadedPathKeys = <String>{};
-    for (final item in unifiedDownloaded) {
-      downloadedPathKeys.addAll(buildPathMatchKeys(item.filePath));
-    }
+    final unifiedLocal = _unifiedLocalItems(localItemsForMerge);
+    final downloadedPathKeys = _downloadedPathKeys(historyItems);
 
     final dedupedUnifiedLocal = <UnifiedLibraryItem>[];
     for (final item in unifiedLocal) {
@@ -3572,24 +3639,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                   const Spacer(),
                   // Filter button with long-press to reset
                   if (!_isSelectionMode)
-                    GestureDetector(
-                      onLongPress: _activeFilterCount > 0
-                          ? _resetFilters
-                          : null,
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            _showFilterSheet(context, unifiedItems),
-                        icon: Badge(
-                          isLabelVisible: _activeFilterCount > 0,
-                          label: Text('$_activeFilterCount'),
-                          child: const Icon(Icons.filter_list, size: 18),
-                        ),
-                        label: Text(context.l10n.libraryFilterTitle),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ),
+                    _buildFilterButton(context, unifiedItems),
                   if (!_isSelectionMode && filteredUnifiedItems.isNotEmpty)
                     TextButton.icon(
                       onPressed: () => _showCreatePlaylistDialog(context),
@@ -3621,21 +3671,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onLongPress: _activeFilterCount > 0 ? _resetFilters : null,
-                    child: TextButton.icon(
-                      onPressed: () => _showFilterSheet(context, unifiedItems),
-                      icon: Badge(
-                        isLabelVisible: _activeFilterCount > 0,
-                        label: Text('$_activeFilterCount'),
-                        child: const Icon(Icons.filter_list, size: 18),
-                      ),
-                      label: Text(context.l10n.libraryFilterTitle),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ),
+                  _buildFilterButton(context, unifiedItems),
                 ],
               ),
             ),
@@ -3652,21 +3688,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
               child: Row(
                 children: [
                   const Spacer(),
-                  GestureDetector(
-                    onLongPress: _activeFilterCount > 0 ? _resetFilters : null,
-                    child: TextButton.icon(
-                      onPressed: () => _showFilterSheet(context, unifiedItems),
-                      icon: Badge(
-                        isLabelVisible: _activeFilterCount > 0,
-                        label: Text('$_activeFilterCount'),
-                        child: const Icon(Icons.filter_list, size: 18),
-                      ),
-                      label: Text(context.l10n.libraryFilterTitle),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ),
+                  _buildFilterButton(context, unifiedItems),
                 ],
               ),
             ),
@@ -3882,24 +3904,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                   ),
                   const Spacer(),
                   if (!_isSelectionMode)
-                    GestureDetector(
-                      onLongPress: _activeFilterCount > 0
-                          ? _resetFilters
-                          : null,
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            _showFilterSheet(context, unifiedItems),
-                        icon: Badge(
-                          isLabelVisible: _activeFilterCount > 0,
-                          label: Text('$_activeFilterCount'),
-                          child: const Icon(Icons.filter_list, size: 18),
-                        ),
-                        label: Text(context.l10n.libraryFilterTitle),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ),
+                    _buildFilterButton(context, unifiedItems),
                   if (!_isSelectionMode && filteredUnifiedItems.isNotEmpty)
                     TextButton.icon(
                       onPressed: () => _showCreatePlaylistDialog(context),
@@ -4095,121 +4100,47 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     _GroupedAlbum album,
     ColorScheme colorScheme,
   ) {
-    final embeddedCoverPath = _resolveDownloadedEmbeddedCoverPath(
-      album.sampleFilePath,
-    );
-    return Semantics(
-      button: true,
-      label:
-          'Open album ${album.albumName} by ${album.artistName}, ${album.tracks.length} tracks',
-      child: GestureDetector(
-        onTap: () => _navigateToDownloadedAlbum(album),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: embeddedCoverPath != null
-                        ? Image.file(
-                            File(embeddedCoverPath),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            cacheWidth: 300,
-                            cacheHeight: 300,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                                  color: colorScheme.surfaceContainerHighest,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.album,
-                                      color: colorScheme.onSurfaceVariant,
-                                      size: 48,
-                                    ),
-                                  ),
-                                ),
-                          )
-                        : album.coverUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: album.coverUrl!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            memCacheWidth: 300,
-                            memCacheHeight: 300,
-                            cacheManager: CoverCacheManager.instance,
-                          )
-                        : Container(
-                            color: colorScheme.surfaceContainerHighest,
-                            child: Center(
-                              child: Icon(
-                                Icons.album,
-                                color: colorScheme.onSurfaceVariant,
-                                size: 48,
-                              ),
-                            ),
-                          ),
-                  ),
-                  Positioned(
-                    right: 8,
-                    bottom: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.music_note,
-                            size: 12,
-                            color: colorScheme.onPrimaryContainer,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${album.tracks.length}',
-                            style: TextStyle(
-                              color: colorScheme.onPrimaryContainer,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              album.albumName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            ClickableArtistName(
-              artistName: album.artistName,
-              coverUrl: album.coverUrl,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ValueListenableBuilder<int>(
+      valueListenable: _embeddedCoverVersion,
+      builder: (context, _, child) {
+        final embeddedCoverPath = _resolveDownloadedEmbeddedCoverPath(
+          album.sampleFilePath,
+        );
+        return _buildAlbumGridItemCore(
+          context: context,
+          albumName: album.albumName,
+          artistName: album.artistName,
+          trackCount: album.tracks.length,
+          colorScheme: colorScheme,
+          coverWidget: embeddedCoverPath != null
+              ? Image.file(
+                  File(embeddedCoverPath),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  cacheWidth: 300,
+                  cacheHeight: 300,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _albumPlaceholder(colorScheme),
+                )
+              : album.coverUrl != null
+              ? CachedNetworkImage(
+                  imageUrl: album.coverUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  memCacheWidth: 300,
+                  memCacheHeight: 300,
+                  cacheManager: CoverCacheManager.instance,
+                )
+              : null,
+          badgeColor: colorScheme.primaryContainer,
+          badgeTextColor: colorScheme.onPrimaryContainer,
+          badgeIcon: Icons.music_note,
+          coverUrl: album.coverUrl,
+          onTap: () => _navigateToDownloadedAlbum(album),
+        );
+      },
     );
   }
 
@@ -4219,12 +4150,58 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     _GroupedLocalAlbum album,
     ColorScheme colorScheme,
   ) {
+    return _buildAlbumGridItemCore(
+      context: context,
+      albumName: album.albumName,
+      artistName: album.artistName,
+      trackCount: album.tracks.length,
+      colorScheme: colorScheme,
+      coverWidget: album.coverPath != null
+          ? Image.file(
+              File(album.coverPath!),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              cacheWidth: 300,
+              cacheHeight: 300,
+              errorBuilder: (context, error, stackTrace) =>
+                  _albumPlaceholder(colorScheme),
+            )
+          : null,
+      badgeColor: colorScheme.tertiaryContainer,
+      badgeTextColor: colorScheme.onTertiaryContainer,
+      badgeIcon: Icons.folder,
+      onTap: () => _navigateToLocalAlbum(album),
+    );
+  }
+
+  Widget _albumPlaceholder(ColorScheme colorScheme) {
+    return Container(
+      color: colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: Icon(Icons.album, color: colorScheme.onSurfaceVariant, size: 48),
+      ),
+    );
+  }
+
+  Widget _buildAlbumGridItemCore({
+    required BuildContext context,
+    required String albumName,
+    required String artistName,
+    required int trackCount,
+    required ColorScheme colorScheme,
+    required Widget? coverWidget,
+    required Color badgeColor,
+    required Color badgeTextColor,
+    required IconData badgeIcon,
+    required VoidCallback onTap,
+    String? coverUrl,
+  }) {
     return Semantics(
       button: true,
-      label:
-          'Open local album ${album.albumName} by ${album.artistName}, ${album.tracks.length} tracks',
+      label: 'Open album $albumName by $artistName, $trackCount tracks',
       child: GestureDetector(
-        onTap: () => _navigateToLocalAlbum(album),
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -4233,38 +4210,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: album.coverPath != null
-                        ? Image.file(
-                            File(album.coverPath!),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            cacheWidth: 300,
-                            cacheHeight: 300,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                                  color: colorScheme.surfaceContainerHighest,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.album,
-                                      color: colorScheme.onSurfaceVariant,
-                                      size: 48,
-                                    ),
-                                  ),
-                                ),
-                          )
-                        : Container(
-                            color: colorScheme.surfaceContainerHighest,
-                            child: Center(
-                              child: Icon(
-                                Icons.album,
-                                color: colorScheme.onSurfaceVariant,
-                                size: 48,
-                              ),
-                            ),
-                          ),
+                    child: coverWidget ?? _albumPlaceholder(colorScheme),
                   ),
-                  // "Local" badge instead of track count
                   Positioned(
                     right: 8,
                     bottom: 8,
@@ -4274,22 +4221,18 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: colorScheme.tertiaryContainer,
+                        color: badgeColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.folder,
-                            size: 12,
-                            color: colorScheme.onTertiaryContainer,
-                          ),
+                          Icon(badgeIcon, size: 12, color: badgeTextColor),
                           const SizedBox(width: 4),
                           Text(
-                            '${album.tracks.length}',
+                            '$trackCount',
                             style: TextStyle(
-                              color: colorScheme.onTertiaryContainer,
+                              color: badgeTextColor,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -4303,7 +4246,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              album.albumName,
+              albumName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -4311,7 +4254,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             ClickableArtistName(
-              artistName: album.artistName,
+              artistName: artistName,
+              coverUrl: coverUrl,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -5433,14 +5377,14 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$selectedCount selected',
+                          context.l10n.selectionSelected(selectedCount),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Text(
                           allSelected
-                              ? 'All tracks selected'
-                              : 'Tap tracks to select',
+                              ? context.l10n.selectionAllSelected
+                              : context.l10n.downloadedAlbumTapToSelect,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
@@ -5460,7 +5404,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                       allSelected ? Icons.deselect : Icons.select_all,
                       size: 20,
                     ),
-                    label: Text(allSelected ? 'Deselect' : 'Select All'),
+                    label: Text(
+                      allSelected
+                          ? context.l10n.actionDeselect
+                          : context.l10n.actionSelectAll,
+                    ),
                     style: TextButton.styleFrom(
                       foregroundColor: colorScheme.primary,
                     ),
@@ -5528,7 +5476,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                   label: Text(
                     selectedCount > 0
                         ? 'Delete $selectedCount ${selectedCount == 1 ? 'track' : 'tracks'}'
-                        : 'Select tracks to delete',
+                        : context.l10n.selectionSelectToDelete,
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: selectedCount > 0
@@ -5833,115 +5781,81 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     }
   }
 
-  /// Build cover image widget for unified library item
-  /// Supports network URLs (from downloads) and local file paths (from library scan)
-  Widget _buildUnifiedCoverImage(
-    UnifiedLibraryItem item,
-    ColorScheme colorScheme,
-    double size,
+  /// Reusable filter button with badge showing active filter count.
+  Widget _buildFilterButton(
+    BuildContext context,
+    List<UnifiedLibraryItem> unifiedItems,
   ) {
-    final isDownloaded = item.source == LibraryItemSource.downloaded;
-    if (isDownloaded) {
-      final embeddedCoverPath = _resolveDownloadedEmbeddedCoverPath(
-        item.filePath,
-      );
-      if (embeddedCoverPath != null) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(
-            File(embeddedCoverPath),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            cacheWidth: (size * 2).toInt(),
-            cacheHeight: (size * 2).toInt(),
-            errorBuilder: (context, error, stackTrace) =>
-                _buildPlaceholderCover(colorScheme, size, isDownloaded),
-          ),
-        );
-      }
-    }
-
-    // Network URL cover (downloaded items)
-    if (item.coverUrl != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
-          imageUrl: item.coverUrl!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          memCacheWidth: (size * 2).toInt(),
-          memCacheHeight: (size * 2).toInt(),
-          cacheManager: CoverCacheManager.instance,
-          placeholder: (context, url) => Container(
-            width: size,
-            height: size,
-            color: colorScheme.surfaceContainerHighest,
-            child: Icon(Icons.music_note, color: colorScheme.onSurfaceVariant),
-          ),
-          errorWidget: (context, url, error) => Container(
-            width: size,
-            height: size,
-            color: colorScheme.surfaceContainerHighest,
-            child: Icon(Icons.music_note, color: colorScheme.onSurfaceVariant),
-          ),
+    return GestureDetector(
+      onLongPress: _activeFilterCount > 0 ? _resetFilters : null,
+      child: TextButton.icon(
+        onPressed: () => _showFilterSheet(context, unifiedItems),
+        icon: Badge(
+          isLabelVisible: _activeFilterCount > 0,
+          label: Text('$_activeFilterCount'),
+          child: const Icon(Icons.filter_list, size: 18),
         ),
-      );
-    }
-
-    // Local file cover (from library scan)
-    if (item.localCoverPath != null && item.localCoverPath!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(item.localCoverPath!),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          cacheWidth: (size * 2).toInt(),
-          cacheHeight: (size * 2).toInt(),
-          errorBuilder: (context, error, stackTrace) =>
-              _buildPlaceholderCover(colorScheme, size, isDownloaded),
-        ),
-      );
-    }
-
-    // Placeholder (no cover)
-    return _buildPlaceholderCover(colorScheme, size, isDownloaded);
-  }
-
-  /// Build placeholder cover image
-  Widget _buildPlaceholderCover(
-    ColorScheme colorScheme,
-    double size,
-    bool isDownloaded,
-  ) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: isDownloaded
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(
-        Icons.music_note,
-        color: isDownloaded
-            ? colorScheme.onSurfaceVariant
-            : colorScheme.onSecondaryContainer,
-        size: size * 0.4,
+        label: Text(context.l10n.libraryFilterTitle),
+        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
       ),
     );
   }
 
-  /// Build cover image for unified grid item (fills container)
-  Widget _buildUnifiedGridCoverImage(
+  /// Build cover image widget for unified library item.
+  /// When [size] is provided, renders at fixed dimensions (list mode).
+  /// When [size] is null, fills the parent container (grid mode).
+  Widget _buildUnifiedCoverImage(
+    UnifiedLibraryItem item,
+    ColorScheme colorScheme, [
+    double? size,
+  ]) {
+    final isDownloaded = item.source == LibraryItemSource.downloaded;
+
+    // For downloaded items, listen to embedded cover version so the cover
+    // updates after async extraction completes.
+    if (isDownloaded) {
+      return ValueListenableBuilder<int>(
+        valueListenable: _embeddedCoverVersion,
+        builder: (context, _, child) =>
+            _buildUnifiedCoverImageInner(item, colorScheme, isDownloaded, size),
+      );
+    }
+
+    return _buildUnifiedCoverImageInner(item, colorScheme, isDownloaded, size);
+  }
+
+  Widget _buildUnifiedCoverImageInner(
     UnifiedLibraryItem item,
     ColorScheme colorScheme,
-  ) {
-    final isDownloaded = item.source == LibraryItemSource.downloaded;
+    bool isDownloaded, [
+    double? size,
+  ]) {
+    final cacheSize = size != null ? (size * 2).toInt() : 200;
+    final iconSize = size != null ? size * 0.4 : 32.0;
+
+    Widget buildPlaceholder({bool isLocal = false}) {
+      final bgColor = (isDownloaded && !isLocal)
+          ? colorScheme.surfaceContainerHighest
+          : colorScheme.secondaryContainer;
+      final fgColor = (isDownloaded && !isLocal)
+          ? colorScheme.onSurfaceVariant
+          : colorScheme.onSecondaryContainer;
+      return Container(
+        width: size,
+        height: size,
+        decoration: size != null
+            ? BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(8),
+              )
+            : null,
+        color: size != null ? null : bgColor,
+        child: Center(
+          child: Icon(Icons.music_note, color: fgColor, size: iconSize),
+        ),
+      );
+    }
+
     if (isDownloaded) {
       final embeddedCoverPath = _resolveDownloadedEmbeddedCoverPath(
         item.filePath,
@@ -5951,17 +5865,12 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           borderRadius: BorderRadius.circular(8),
           child: Image.file(
             File(embeddedCoverPath),
+            width: size,
+            height: size,
             fit: BoxFit.cover,
-            cacheWidth: 200,
-            cacheHeight: 200,
-            errorBuilder: (context, error, stackTrace) => Container(
-              color: colorScheme.surfaceContainerHighest,
-              child: Icon(
-                Icons.music_note,
-                color: colorScheme.onSurfaceVariant,
-                size: 32,
-              ),
-            ),
+            cacheWidth: cacheSize,
+            cacheHeight: cacheSize,
+            errorBuilder: (context, error, stackTrace) => buildPlaceholder(),
           ),
         );
       }
@@ -5973,26 +5882,14 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         borderRadius: BorderRadius.circular(8),
         child: CachedNetworkImage(
           imageUrl: item.coverUrl!,
+          width: size,
+          height: size,
           fit: BoxFit.cover,
-          memCacheWidth: 200,
-          memCacheHeight: 200,
+          memCacheWidth: cacheSize,
+          memCacheHeight: cacheSize,
           cacheManager: CoverCacheManager.instance,
-          placeholder: (context, url) => Container(
-            color: colorScheme.surfaceContainerHighest,
-            child: Icon(
-              Icons.music_note,
-              color: colorScheme.onSurfaceVariant,
-              size: 32,
-            ),
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: colorScheme.surfaceContainerHighest,
-            child: Icon(
-              Icons.music_note,
-              color: colorScheme.onSurfaceVariant,
-              size: 32,
-            ),
-          ),
+          placeholder: (context, url) => buildPlaceholder(),
+          errorWidget: (context, url, error) => buildPlaceholder(),
         ),
       );
     }
@@ -6003,36 +5900,24 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         borderRadius: BorderRadius.circular(8),
         child: Image.file(
           File(item.localCoverPath!),
+          width: size,
+          height: size,
           fit: BoxFit.cover,
-          cacheWidth: 200,
-          cacheHeight: 200,
-          errorBuilder: (context, error, stackTrace) => Container(
-            color: colorScheme.secondaryContainer,
-            child: Icon(
-              Icons.music_note,
-              color: colorScheme.onSecondaryContainer,
-              size: 32,
-            ),
-          ),
+          cacheWidth: cacheSize,
+          cacheHeight: cacheSize,
+          errorBuilder: (context, error, stackTrace) =>
+              buildPlaceholder(isLocal: true),
         ),
       );
     }
 
     // Placeholder (no cover)
+    if (size != null) {
+      return buildPlaceholder();
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Container(
-        color: isDownloaded
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.secondaryContainer,
-        child: Icon(
-          Icons.music_note,
-          color: isDownloaded
-              ? colorScheme.onSurfaceVariant
-              : colorScheme.onSecondaryContainer,
-          size: 32,
-        ),
-      ),
+      child: buildPlaceholder(),
     );
   }
 
@@ -6059,193 +5944,201 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         ? colorScheme.onPrimaryContainer
         : colorScheme.onSecondaryContainer;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      color: isSelected
-          ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-          : null,
-      child: InkWell(
-        onTap: _isSelectionMode
-            ? () => _toggleSelection(item.id)
-            : isDownloaded
-            ? () => _navigateToHistoryMetadataScreen(item.historyItem!)
-            : item.localItem != null
-            ? () => _navigateToLocalMetadataScreen(item.localItem!)
-            : () => _openFile(
-                item.filePath,
-                title: item.trackName,
-                artist: item.artistName,
-                album: item.albumName,
-                coverUrl: item.coverUrl ?? item.localCoverPath ?? '',
-              ),
-        onLongPress: _isSelectionMode
-            ? null
-            : () => _enterSelectionMode(item.id),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              if (_isSelectionMode) ...[
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.outline,
-                      width: 2,
+    return Semantics(
+      label: '${item.trackName} by ${item.artistName}',
+      selected: isSelected,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        color: isSelected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+            : null,
+        child: InkWell(
+          onTap: _isSelectionMode
+              ? () => _toggleSelection(item.id)
+              : isDownloaded
+              ? () => _navigateToHistoryMetadataScreen(item.historyItem!)
+              : item.localItem != null
+              ? () => _navigateToLocalMetadataScreen(item.localItem!)
+              : () => _openFile(
+                  item.filePath,
+                  title: item.trackName,
+                  artist: item.artistName,
+                  album: item.albumName,
+                  coverUrl: item.coverUrl ?? item.localCoverPath ?? '',
+                ),
+          onLongPress: _isSelectionMode
+              ? null
+              : () => _enterSelectionMode(item.id),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                if (_isSelectionMode) ...[
+                  Semantics(
+                    checked: isSelected,
+                    label: isSelected ? 'Deselect track' : 'Select track',
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.outline,
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? Icon(
+                              Icons.check,
+                              color: colorScheme.onPrimary,
+                              size: 16,
+                            )
+                          : null,
                     ),
                   ),
-                  child: isSelected
-                      ? Icon(
-                          Icons.check,
-                          color: colorScheme.onPrimary,
-                          size: 16,
-                        )
-                      : null,
-                ),
+                  const SizedBox(width: 12),
+                ],
+                // Cover image - supports network URL and local file path
+                _buildUnifiedCoverImage(item, colorScheme, 56),
                 const SizedBox(width: 12),
-              ],
-              // Cover image - supports network URL and local file path
-              _buildUnifiedCoverImage(item, colorScheme, 56),
-              const SizedBox(width: 12),
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.trackName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    ClickableArtistName(
-                      artistName: item.artistName,
-                      coverUrl: item.coverUrl,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        // Source badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: sourceColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            sourceLabel,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: sourceTextColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.trackName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            dateStr,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: colorScheme.onSurfaceVariant
-                                      .withValues(alpha: 0.7),
-                                ),
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      ClickableArtistName(
+                        artistName: item.artistName,
+                        coverUrl: item.coverUrl,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
                         ),
-                        if (item.quality != null &&
-                            item.quality!.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          // Source badge
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: item.quality!.startsWith('24')
-                                  ? colorScheme.tertiaryContainer
-                                  : colorScheme.surfaceContainerHighest,
+                              color: sourceColor,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              item.quality!,
+                              sourceLabel,
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
-                                    color: item.quality!.startsWith('24')
-                                        ? colorScheme.onTertiaryContainer
-                                        : colorScheme.onSurfaceVariant,
+                                    color: sourceTextColor,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
                                   ),
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              if (!_isSelectionMode)
-                ValueListenableBuilder<bool>(
-                  valueListenable: fileExistsListenable,
-                  builder: (context, fileExists, child) {
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (fileExists)
-                          IconButton(
-                            onPressed: () => _openFile(
-                              item.filePath,
-                              title: item.trackName,
-                              artist: item.artistName,
-                              album: item.albumName,
-                              coverUrl:
-                                  item.coverUrl ?? item.localCoverPath ?? '',
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              dateStr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.7),
+                                  ),
                             ),
-                            icon: Icon(
-                              Icons.play_arrow,
-                              color: colorScheme.primary,
-                            ),
-                            tooltip: context.l10n.tooltipPlay,
-                            style: IconButton.styleFrom(
-                              backgroundColor: colorScheme.primaryContainer
-                                  .withValues(alpha: 0.3),
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.error_outline,
-                            color: colorScheme.error,
-                            size: 20,
                           ),
-                      ],
-                    );
-                  },
+                          if (item.quality != null &&
+                              item.quality!.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: item.quality!.startsWith('24')
+                                    ? colorScheme.tertiaryContainer
+                                    : colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                item.quality!,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: item.quality!.startsWith('24')
+                                          ? colorScheme.onTertiaryContainer
+                                          : colorScheme.onSurfaceVariant,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-            ],
+                const SizedBox(width: 8),
+
+                if (!_isSelectionMode)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: fileExistsListenable,
+                    builder: (context, fileExists, child) {
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (fileExists)
+                            IconButton(
+                              onPressed: () => _openFile(
+                                item.filePath,
+                                title: item.trackName,
+                                artist: item.artistName,
+                                album: item.albumName,
+                                coverUrl:
+                                    item.coverUrl ?? item.localCoverPath ?? '',
+                              ),
+                              icon: Icon(
+                                Icons.play_arrow,
+                                color: colorScheme.primary,
+                              ),
+                              tooltip: context.l10n.tooltipPlay,
+                              style: IconButton.styleFrom(
+                                backgroundColor: colorScheme.primaryContainer
+                                    .withValues(alpha: 0.3),
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.error_outline,
+                              color: colorScheme.error,
+                              size: 20,
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -6286,7 +6179,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                 children: [
                   AspectRatio(
                     aspectRatio: 1,
-                    child: _buildUnifiedGridCoverImage(item, colorScheme),
+                    child: _buildUnifiedCoverImage(item, colorScheme),
                   ),
                   // Source badge (top-right)
                   Positioned(
