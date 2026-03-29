@@ -204,7 +204,7 @@ func resolveDeezerTrackURL(req DownloadRequest) (string, error) {
 	}
 	if deezerID != "" {
 		trackURL := fmt.Sprintf("https://www.deezer.com/track/%s", deezerID)
-		if err := verifyDeezerTrack(req, deezerID); err != nil {
+		if err := verifyDeezerTrack(req, deezerID, false); err != nil {
 			GoLog("[Deezer] Direct ID %s verification failed: %v\n", deezerID, err)
 			// Don't reject direct IDs from request payload — they're presumably correct.
 		}
@@ -219,7 +219,7 @@ func resolveDeezerTrackURL(req DownloadRequest) (string, error) {
 		if err == nil && availability.Deezer && availability.DeezerURL != "" {
 			resolvedID := extractDeezerIDFromURL(availability.DeezerURL)
 			if resolvedID != "" {
-				if verifyErr := verifyDeezerTrack(req, resolvedID); verifyErr != nil {
+				if verifyErr := verifyDeezerTrack(req, resolvedID, true); verifyErr != nil {
 					GoLog("[Deezer] SongLink ID %s rejected: %v\n", resolvedID, verifyErr)
 					// Fall through to ISRC search instead of using wrong track.
 				} else {
@@ -240,7 +240,7 @@ func resolveDeezerTrackURL(req DownloadRequest) (string, error) {
 		if err == nil && track != nil {
 			resolvedID := songLinkExtractDeezerTrackID(track)
 			if resolvedID != "" {
-				if verifyErr := verifyDeezerTrack(req, resolvedID); verifyErr != nil {
+				if verifyErr := verifyDeezerTrack(req, resolvedID, false); verifyErr != nil {
 					GoLog("[Deezer] ISRC-resolved ID %s rejected: %v\n", resolvedID, verifyErr)
 					return "", fmt.Errorf("deezer track resolved via ISRC does not match: %w", verifyErr)
 				}
@@ -252,7 +252,7 @@ func resolveDeezerTrackURL(req DownloadRequest) (string, error) {
 	return "", fmt.Errorf("could not resolve Deezer track URL")
 }
 
-func verifyDeezerTrack(req DownloadRequest, deezerID string) error {
+func verifyDeezerTrack(req DownloadRequest, deezerID string, skipNameVerification bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SongLinkTimeout)
 	defer cancel()
 	trackResp, err := GetDeezerClient().GetTrack(ctx, deezerID)
@@ -260,9 +260,11 @@ func verifyDeezerTrack(req DownloadRequest, deezerID string) error {
 		return nil // Can't verify — don't block the download.
 	}
 	resolved := resolvedTrackInfo{
-		Title:      trackResp.Track.Name,
-		ArtistName: trackResp.Track.Artists,
-		Duration:   trackResp.Track.DurationMS / 1000,
+		Title:                trackResp.Track.Name,
+		ArtistName:           trackResp.Track.Artists,
+		ISRC:                 trackResp.Track.ISRC,
+		Duration:             trackResp.Track.DurationMS / 1000,
+		SkipNameVerification: skipNameVerification,
 	}
 	if !trackMatchesRequest(req, resolved, "Deezer") {
 		return fmt.Errorf("expected '%s - %s', got '%s - %s'",

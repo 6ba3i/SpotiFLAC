@@ -829,6 +829,7 @@ func (t *TidalDownloader) SearchTrackByMetadataWithISRC(trackName, artistName, a
 			resolved := resolvedTrackInfo{
 				Title:      strings.TrimSpace(track.Title),
 				ArtistName: tidalTrackArtistsDisplay(track),
+				ISRC:       strings.TrimSpace(track.ISRC),
 				Duration:   track.Duration,
 			}
 			if trackMatchesRequest(req, resolved, "Tidal search") {
@@ -2035,6 +2036,7 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 	expectedDurationSec := req.DurationMS / 1000
 	var trackID int64
 	var gotTidalID bool
+	var resolvedViaSongLink bool
 
 	if req.TidalID != "" {
 		GoLog("[%s] Using Tidal ID from request payload: %s\n", logPrefix, req.TidalID)
@@ -2094,6 +2096,7 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 					trackID = parsedTrackID
 					GoLog("[%s] Got Tidal ID %d directly from SongLink\n", logPrefix, trackID)
 					gotTidalID = true
+					resolvedViaSongLink = true
 					return
 				}
 			}
@@ -2103,6 +2106,7 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 				if idErr == nil && trackID > 0 {
 					GoLog("[%s] Got Tidal ID %d from URL parsing\n", logPrefix, trackID)
 					gotTidalID = true
+					resolvedViaSongLink = true
 				}
 			}
 		}
@@ -2157,9 +2161,11 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 			providerArtist = actualTrack.Artists[0].Name
 		}
 		resolved := resolvedTrackInfo{
-			Title:      actualTrack.Title,
-			ArtistName: providerArtist,
-			Duration:   actualTrack.Duration,
+			Title:                actualTrack.Title,
+			ArtistName:           providerArtist,
+			ISRC:                 strings.TrimSpace(actualTrack.ISRC),
+			Duration:             actualTrack.Duration,
+			SkipNameVerification: resolvedViaSongLink,
 		}
 		if !trackMatchesRequest(req, resolved, logPrefix) {
 			// Invalidate the cached ID so future requests don't reuse it.

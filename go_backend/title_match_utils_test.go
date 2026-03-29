@@ -21,6 +21,40 @@ func TestNormalizeLooseTitle_EmojiAndSymbols(t *testing.T) {
 	}
 }
 
+func TestTrackMatchesRequest_SongLinkBypassesArtistAndTitle(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Ringišpil",
+		ArtistName: "Djordje Balasevic",
+	}
+	resolved := resolvedTrackInfo{
+		Title:                "Completely Different Title",
+		ArtistName:           "Totally Different Artist",
+		SkipNameVerification: true,
+	}
+
+	if !trackMatchesRequest(req, resolved, "test") {
+		t.Fatal("expected SongLink-resolved track to bypass artist/title verification")
+	}
+}
+
+func TestTrackMatchesRequest_SongLinkStillChecksDuration(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Ringišpil",
+		ArtistName: "Djordje Balasevic",
+		DurationMS: 180000,
+	}
+	resolved := resolvedTrackInfo{
+		Title:                "Completely Different Title",
+		ArtistName:           "Totally Different Artist",
+		Duration:             240,
+		SkipNameVerification: true,
+	}
+
+	if trackMatchesRequest(req, resolved, "test") {
+		t.Fatal("expected SongLink-resolved track with large duration mismatch to be rejected")
+	}
+}
+
 func TestTitlesMatch_SeparatorVariants(t *testing.T) {
 	if !titlesMatch("Doctor / Cops", "Doctor _ Cops") {
 		t.Fatal("expected tidal titlesMatch to accept / vs _ variant")

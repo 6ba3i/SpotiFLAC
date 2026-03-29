@@ -301,11 +301,11 @@ class _MainShellState extends ConsumerState<MainShell>
     }
   }
 
-  void _handleBackPress() {
+  Future<void> _handleBackPress() async {
     final rootNavigator = Navigator.of(context, rootNavigator: true);
-    if (rootNavigator.canPop()) {
-      _log.i('Back: step 1 - root navigator pop');
-      rootNavigator.pop();
+    final handledByRootNavigator = await rootNavigator.maybePop();
+    if (handledByRootNavigator) {
+      _log.i('Back: step 1 - root navigator handled back');
       _lastBackPress = null;
       return;
     }
@@ -314,9 +314,10 @@ class _MainShellState extends ConsumerState<MainShell>
       settingsProvider.select((s) => s.showExtensionStore),
     );
     final currentNavigator = _navigatorForTab(_currentIndex, showStore);
-    if (currentNavigator != null && currentNavigator.canPop()) {
-      _log.i('Back: step 2 - tab navigator pop (tab=$_currentIndex)');
-      currentNavigator.pop();
+    final handledByCurrentNavigator =
+        await currentNavigator?.maybePop() ?? false;
+    if (handledByCurrentNavigator) {
+      _log.i('Back: step 2 - tab navigator handled back (tab=$_currentIndex)');
       _lastBackPress = null;
       return;
     }
@@ -522,7 +523,7 @@ class _MainShellState extends ConsumerState<MainShell>
 
     return BackButtonListener(
       onBackButtonPressed: () async {
-        _handleBackPress();
+        await _handleBackPress();
         return true;
       },
       child: Scaffold(

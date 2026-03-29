@@ -1559,7 +1559,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       final isDownloading = itemProgress['is_downloading'] as bool? ?? false;
       final status = itemProgress['status'] as String? ?? 'downloading';
 
-      if (status == 'finalizing' && bytesTotal > 0) {
+      if (status == 'finalizing') {
         progressUpdates[itemId] = const _ProgressUpdate(
           status: DownloadStatus.finalizing,
           progress: 1.0,
@@ -4358,7 +4358,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
         if (!wasExisting && decryptionKey.isNotEmpty && filePath != null) {
           _log.i('Encrypted stream detected, decrypting via FFmpeg...');
-          updateItemStatus(item.id, DownloadStatus.downloading, progress: 0.9);
+          updateItemStatus(item.id, DownloadStatus.finalizing, progress: 0.9);
 
           if (effectiveSafMode && isContentUri(filePath)) {
             final currentFilePath = filePath;
@@ -4503,7 +4503,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                 try {
                   updateItemStatus(
                     item.id,
-                    DownloadStatus.downloading,
+                    DownloadStatus.finalizing,
                     progress: 0.95,
                   );
 
@@ -4524,7 +4524,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                     _log.i('Embedding metadata to $format...');
                     updateItemStatus(
                       item.id,
-                      DownloadStatus.downloading,
+                      DownloadStatus.finalizing,
                       progress: 0.99,
                     );
 
@@ -4608,7 +4608,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                   } else {
                     updateItemStatus(
                       item.id,
-                      DownloadStatus.downloading,
+                      DownloadStatus.finalizing,
                       progress: 0.95,
                     );
                     flacPath = await FFmpegService.convertM4aToFlac(tempPath);
@@ -4684,7 +4684,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               try {
                 updateItemStatus(
                   item.id,
-                  DownloadStatus.downloading,
+                  DownloadStatus.finalizing,
                   progress: 0.95,
                 );
 
@@ -4711,7 +4711,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                   _log.i('Embedding metadata to $format...');
                   updateItemStatus(
                     item.id,
-                    DownloadStatus.downloading,
+                    DownloadStatus.finalizing,
                     progress: 0.99,
                   );
 
@@ -4765,7 +4765,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                   } else {
                     updateItemStatus(
                       item.id,
-                      DownloadStatus.downloading,
+                      DownloadStatus.finalizing,
                       progress: 0.95,
                     );
                     final flacPath = await FFmpegService.convertM4aToFlac(
@@ -4849,7 +4849,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
             try {
               updateItemStatus(
                 item.id,
-                DownloadStatus.downloading,
+                DownloadStatus.finalizing,
                 progress: 0.99,
               );
 
@@ -4930,7 +4930,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           try {
             updateItemStatus(
               item.id,
-              DownloadStatus.downloading,
+              DownloadStatus.finalizing,
               progress: 0.99,
             );
 

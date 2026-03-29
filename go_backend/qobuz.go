@@ -1597,21 +1597,27 @@ func (q *QobuzDownloader) SearchTrackByMetadataWithDuration(trackName, artistNam
 	return nil, fmt.Errorf("no matching track found for: %s - %s", artistName, trackName)
 }
 
-func qobuzTrackMatchesRequest(req DownloadRequest, track *QobuzTrack, logPrefix, source string) bool {
+func qobuzTrackMatchesRequest(req DownloadRequest, track *QobuzTrack, logPrefix, source string, skipNameVerification bool) bool {
 	if track == nil {
 		return false
 	}
 
-	if req.ArtistName != "" && !qobuzArtistsMatch(req.ArtistName, track.Performer.Name) {
-		GoLog("[%s] Artist mismatch from %s: expected '%s', got '%s'. Rejecting.\n",
-			logPrefix, source, req.ArtistName, track.Performer.Name)
-		return false
-	}
+	exactISRCMatch := req.ISRC != "" &&
+		track.ISRC != "" &&
+		strings.EqualFold(strings.TrimSpace(req.ISRC), strings.TrimSpace(track.ISRC))
 
-	if req.TrackName != "" && !qobuzTitlesMatch(req.TrackName, track.Title) {
-		GoLog("[%s] Title mismatch from %s: expected '%s', got '%s'. Rejecting.\n",
-			logPrefix, source, req.TrackName, track.Title)
-		return false
+	if !exactISRCMatch && !skipNameVerification {
+		if req.ArtistName != "" && !qobuzArtistsMatch(req.ArtistName, track.Performer.Name) {
+			GoLog("[%s] Artist mismatch from %s: expected '%s', got '%s'. Rejecting.\n",
+				logPrefix, source, req.ArtistName, track.Performer.Name)
+			return false
+		}
+
+		if req.TrackName != "" && !qobuzTitlesMatch(req.TrackName, track.Title) {
+			GoLog("[%s] Title mismatch from %s: expected '%s', got '%s'. Rejecting.\n",
+				logPrefix, source, req.TrackName, track.Title)
+			return false
+		}
 	}
 
 	expectedDurationSec := req.DurationMS / 1000
@@ -2125,7 +2131,7 @@ func resolveQobuzTrackForRequest(req DownloadRequest, downloader *QobuzDownloade
 				GoLog("[%s] Failed to get track by request Qobuz ID %d: %v\n", logPrefix, trackID, err)
 				track = nil
 			} else if track != nil {
-				if qobuzTrackMatchesRequest(req, track, logPrefix, "request Qobuz ID") {
+				if qobuzTrackMatchesRequest(req, track, logPrefix, "request Qobuz ID", false) {
 					GoLog("[%s] Successfully found track via request Qobuz ID: '%s' by '%s'\n", logPrefix, track.Title, track.Performer.Name)
 				} else {
 					track = nil
@@ -2142,7 +2148,7 @@ func resolveQobuzTrackForRequest(req DownloadRequest, downloader *QobuzDownloade
 			if err != nil {
 				GoLog("[%s] Cache hit but GetTrackByID failed: %v\n", logPrefix, err)
 				track = nil
-			} else if track != nil && !qobuzTrackMatchesRequest(req, track, logPrefix, "cached Qobuz ID") {
+			} else if track != nil && !qobuzTrackMatchesRequest(req, track, logPrefix, "cached Qobuz ID", false) {
 				track = nil
 			}
 		}
@@ -2162,7 +2168,7 @@ func resolveQobuzTrackForRequest(req DownloadRequest, downloader *QobuzDownloade
 					GoLog("[%s] Failed to get track by SongLink ID %d: %v\n", logPrefix, trackID, err)
 					track = nil
 				} else if track != nil {
-					if qobuzTrackMatchesRequest(req, track, logPrefix, "SongLink Qobuz ID") {
+					if qobuzTrackMatchesRequest(req, track, logPrefix, "SongLink Qobuz ID", true) {
 						GoLog("[%s] Successfully found track via SongLink ID: '%s' by '%s'\n", logPrefix, track.Title, track.Performer.Name)
 						if req.ISRC != "" {
 							GetTrackIDCache().SetQobuz(req.ISRC, track.ID)
@@ -2179,7 +2185,7 @@ func resolveQobuzTrackForRequest(req DownloadRequest, downloader *QobuzDownloade
 	if track == nil && req.ISRC != "" {
 		GoLog("[%s] Trying ISRC search: %s\n", logPrefix, req.ISRC)
 		track, err = qobuzSearchTrackByISRCWithDurationFunc(downloader, req.ISRC, expectedDurationSec)
-		if track != nil && !qobuzTrackMatchesRequest(req, track, logPrefix, "ISRC search") {
+		if track != nil && !qobuzTrackMatchesRequest(req, track, logPrefix, "ISRC search", false) {
 			track = nil
 		}
 	}
@@ -2188,7 +2194,7 @@ func resolveQobuzTrackForRequest(req DownloadRequest, downloader *QobuzDownloade
 	if track == nil {
 		GoLog("[%s] Trying metadata search: '%s' by '%s'\n", logPrefix, req.TrackName, req.ArtistName)
 		track, err = qobuzSearchTrackByMetadataWithDurationFunc(downloader, req.TrackName, req.ArtistName, expectedDurationSec)
-		if track != nil && !qobuzTrackMatchesRequest(req, track, logPrefix, "metadata search") {
+		if track != nil && !qobuzTrackMatchesRequest(req, track, logPrefix, "metadata search", false) {
 			track = nil
 		}
 	}

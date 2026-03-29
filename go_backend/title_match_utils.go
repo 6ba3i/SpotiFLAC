@@ -7,6 +7,21 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+func writeNormalizedArtistRune(b *strings.Builder, r rune) {
+	switch r {
+	case 'đ':
+		b.WriteString("dj")
+	case 'ß':
+		b.WriteString("ss")
+	case 'æ':
+		b.WriteString("ae")
+	case 'œ':
+		b.WriteString("oe")
+	default:
+		b.WriteRune(r)
+	}
+}
+
 // normalizeLooseTitle collapses separators/punctuation so titles like
 // "Doctor / Cops" and "Doctor _ Cops" can still match.
 func normalizeLooseTitle(title string) string {
@@ -51,7 +66,7 @@ func normalizeLooseArtistName(name string) string {
 		case unicode.Is(unicode.Mn, r), unicode.Is(unicode.Mc, r), unicode.Is(unicode.Me, r):
 			continue
 		case unicode.IsLetter(r), unicode.IsNumber(r):
-			b.WriteRune(r)
+			writeNormalizedArtistRune(&b, r)
 		case unicode.IsSpace(r):
 			b.WriteByte(' ')
 		case r == '/', r == '\\', r == '_', r == '-', r == '|', r == '.', r == '&', r == '+':
@@ -101,26 +116,34 @@ func normalizeSymbolOnlyTitle(title string) string {
 
 // resolvedTrackInfo holds the metadata fetched from a provider for verification.
 type resolvedTrackInfo struct {
-	Title      string
-	ArtistName string
-	Duration   int
+	Title                string
+	ArtistName           string
+	ISRC                 string
+	Duration             int
+	SkipNameVerification bool
 }
 
 // trackMatchesRequest checks whether a resolved track from a provider matches
 // the original download request. Returns true if the track is a plausible match.
 func trackMatchesRequest(req DownloadRequest, resolved resolvedTrackInfo, logPrefix string) bool {
-	if req.ArtistName != "" && resolved.ArtistName != "" &&
-		!artistsMatch(req.ArtistName, resolved.ArtistName) {
-		GoLog("[%s] Verification failed: artist mismatch — expected '%s', got '%s'\n",
-			logPrefix, req.ArtistName, resolved.ArtistName)
-		return false
-	}
+	exactISRCMatch := req.ISRC != "" &&
+		resolved.ISRC != "" &&
+		strings.EqualFold(strings.TrimSpace(req.ISRC), strings.TrimSpace(resolved.ISRC))
 
-	if req.TrackName != "" && resolved.Title != "" &&
-		!titlesMatch(req.TrackName, resolved.Title) {
-		GoLog("[%s] Verification failed: title mismatch — expected '%s', got '%s'\n",
-			logPrefix, req.TrackName, resolved.Title)
-		return false
+	if !exactISRCMatch && !resolved.SkipNameVerification {
+		if req.ArtistName != "" && resolved.ArtistName != "" &&
+			!artistsMatch(req.ArtistName, resolved.ArtistName) {
+			GoLog("[%s] Verification failed: artist mismatch — expected '%s', got '%s'\n",
+				logPrefix, req.ArtistName, resolved.ArtistName)
+			return false
+		}
+
+		if req.TrackName != "" && resolved.Title != "" &&
+			!titlesMatch(req.TrackName, resolved.Title) {
+			GoLog("[%s] Verification failed: title mismatch — expected '%s', got '%s'\n",
+				logPrefix, req.TrackName, resolved.Title)
+			return false
+		}
 	}
 
 	expectedDurationSec := req.DurationMS / 1000

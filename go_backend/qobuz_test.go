@@ -436,3 +436,20 @@ func TestResolveQobuzTrackForRequestUsesPrefixedQobuzIDWithoutSongLink(t *testin
 		t.Fatalf("unexpected resolved track: %+v", track)
 	}
 }
+
+func TestQobuzTrackMatchesRequest_SongLinkBypassesArtistAndTitle(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Ringišpil",
+		ArtistName: "Djordje Balasevic",
+	}
+
+	track := &QobuzTrack{
+		Title:    "Different Title",
+		Duration: 0,
+	}
+	track.Performer.Name = "Different Artist"
+
+	if !qobuzTrackMatchesRequest(req, track, "Qobuz", "SongLink Qobuz ID", true) {
+		t.Fatal("expected SongLink Qobuz source to bypass artist/title verification")
+	}
+}

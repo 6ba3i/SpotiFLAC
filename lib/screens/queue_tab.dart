@@ -1220,16 +1220,21 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   }
 
   void _toggleSelection(String itemId) {
+    var shouldHideOverlay = false;
     setState(() {
       if (_selectedIds.contains(itemId)) {
         _selectedIds.remove(itemId);
         if (_selectedIds.isEmpty) {
           _isSelectionMode = false;
+          shouldHideOverlay = true;
         }
       } else {
         _selectedIds.add(itemId);
       }
     });
+    if (shouldHideOverlay) {
+      _hideSelectionOverlay();
+    }
   }
 
   void _selectAll(List<UnifiedLibraryItem> items) {
@@ -1269,13 +1274,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           left: 0,
           right: 0,
           bottom: 0,
-          child: Material(
-            color: Colors.transparent,
-            child: _buildSelectionBottomBar(
-              context,
-              colorScheme,
-              _selectionOverlayItems,
-              _selectionOverlayBottomPadding,
+          child: _AnimatedOverlayBottomBar(
+            child: Material(
+              color: Colors.transparent,
+              child: _buildSelectionBottomBar(
+                context,
+                colorScheme,
+                _selectionOverlayItems,
+                _selectionOverlayBottomPadding,
+              ),
             ),
           ),
         );
@@ -1315,13 +1322,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           left: 0,
           right: 0,
           bottom: 0,
-          child: Material(
-            color: Colors.transparent,
-            child: _buildPlaylistSelectionBottomBar(
-              context,
-              colorScheme,
-              _playlistSelectionOverlayItems,
-              _playlistSelectionOverlayBottomPadding,
+          child: _AnimatedOverlayBottomBar(
+            child: Material(
+              color: Colors.transparent,
+              child: _buildPlaylistSelectionBottomBar(
+                context,
+                colorScheme,
+                _playlistSelectionOverlayItems,
+                _playlistSelectionOverlayBottomPadding,
+              ),
             ),
           ),
         );
@@ -1350,16 +1359,21 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   }
 
   void _togglePlaylistSelection(String playlistId) {
+    var shouldHideOverlay = false;
     setState(() {
       if (_selectedPlaylistIds.contains(playlistId)) {
         _selectedPlaylistIds.remove(playlistId);
         if (_selectedPlaylistIds.isEmpty) {
           _isPlaylistSelectionMode = false;
+          shouldHideOverlay = true;
         }
       } else {
         _selectedPlaylistIds.add(playlistId);
       }
     });
+    if (shouldHideOverlay) {
+      _hidePlaylistSelectionOverlay();
+    }
   }
 
   void _selectAllPlaylists(List<UserPlaylistCollection> playlists) {
@@ -5538,20 +5552,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                item.bytesTotal > 0 && item.bytesReceived > 0
-                                    ? (() {
-                                        final receivedMB =
-                                            item.bytesReceived / (1024 * 1024);
-                                        final totalMB =
-                                            item.bytesTotal / (1024 * 1024);
-                                        final progressLabel = item.progress > 0
-                                            ? '${(item.progress * 100).toStringAsFixed(0)}% • '
-                                            : '';
-                                        final speedLabel = item.speedMBps > 0
-                                            ? ' • ${item.speedMBps.toStringAsFixed(1)} MB/s'
-                                            : '';
-                                        return '$progressLabel${receivedMB.toStringAsFixed(1)} / ${totalMB.toStringAsFixed(1)} MB$speedLabel';
-                                      })()
+                                item.bytesTotal > 0
+                                    ? '${(item.progress * 100).toStringAsFixed(0)}%'
                                     : (item.bytesReceived > 0
                                           ? '${(item.bytesReceived / (1024 * 1024)).toStringAsFixed(1)} MB${item.speedMBps > 0 ? ' • ${item.speedMBps.toStringAsFixed(1)} MB/s' : ''}'
                                           : (item.progress > 0
@@ -6463,6 +6465,56 @@ class _SelectionActionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedOverlayBottomBar extends StatefulWidget {
+  final Widget child;
+
+  const _AnimatedOverlayBottomBar({required this.child});
+
+  @override
+  State<_AnimatedOverlayBottomBar> createState() =>
+      _AnimatedOverlayBottomBarState();
+}
+
+class _AnimatedOverlayBottomBarState extends State<_AnimatedOverlayBottomBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _slideAnimation;
+  late final Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+    final curve = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(curve);
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(curve);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(position: _slideAnimation, child: widget.child),
     );
   }
 }
