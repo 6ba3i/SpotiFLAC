@@ -778,20 +778,32 @@ class MainActivity: FlutterFragmentActivity() {
         return if (ext.isNullOrBlank()) "audio" else "audio$ext"
     }
 
+    private fun buildLibraryCoverCacheKey(stablePath: String, lastModified: Long): String {
+        val normalizedPath = stablePath.trim()
+        if (normalizedPath.isEmpty()) return ""
+        return if (lastModified > 0L) "$normalizedPath|$lastModified" else normalizedPath
+    }
+
     private fun readAudioMetadataFromUri(
         uri: Uri,
         displayNameHint: String? = null,
         fallbackExt: String? = null,
+        coverCacheKey: String = "",
     ): JSONObject? {
         val displayName = buildUriDisplayName(uri, displayNameHint, fallbackExt)
 
         try {
             contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                 val directPath = "/proc/self/fd/${pfd.fd}"
-                val metadataJson = Gobackend.readAudioMetadataWithHintJSON(directPath, displayName)
+                val metadataJson = Gobackend.readAudioMetadataWithHintAndCoverCacheKeyJSON(
+                    directPath,
+                    displayName,
+                    coverCacheKey,
+                )
                 if (metadataJson.isNotBlank()) {
                     val obj = JSONObject(metadataJson)
-                    if (!obj.has("error")) {
+                    val filenameFallback = obj.optBoolean("metadataFromFilename", false)
+                    if (!obj.has("error") && !filenameFallback) {
                         return obj
                     }
                 }
@@ -814,7 +826,11 @@ class MainActivity: FlutterFragmentActivity() {
         } ?: return null
 
         try {
-            val metadataJson = Gobackend.readAudioMetadataWithHintJSON(tempPath, displayName)
+            val metadataJson = Gobackend.readAudioMetadataWithHintAndCoverCacheKeyJSON(
+                tempPath,
+                displayName,
+                coverCacheKey,
+            )
             if (metadataJson.isBlank()) return null
             val obj = JSONObject(metadataJson)
             return if (obj.has("error")) null else obj
@@ -1191,6 +1207,11 @@ class MainActivity: FlutterFragmentActivity() {
                 val audioName = try { audioDoc.name ?: "audio.flac" } catch (_: Exception) { "audio.flac" }
                 val audioExt = audioName.substringAfterLast('.', "").lowercase(Locale.ROOT)
                 val fallbackAudioExt = if (audioExt.isNotBlank()) ".$audioExt" else null
+                val audioLastModified = try { audioDoc.lastModified() } catch (_: Exception) { cueDoc.lastModified() }
+                val coverCacheKey = buildLibraryCoverCacheKey(
+                    audioDoc.uri.toString(),
+                    audioLastModified,
+                )
 
                 tempAudioPath = copyUriToTemp(audioDoc.uri, fallbackAudioExt)
                 if (tempAudioPath == null) {
@@ -1209,11 +1230,12 @@ class MainActivity: FlutterFragmentActivity() {
 
                 val cueLastModified = try { cueDoc.lastModified() } catch (_: Exception) { 0L }
 
-                val cueResultsJson = Gobackend.scanCueSheetForLibrary(
+                val cueResultsJson = Gobackend.scanCueSheetForLibraryWithCoverCacheKey(
                     tempCuePath,
                     tempDir,
                     cueDoc.uri.toString(),
-                    cueLastModified
+                    cueLastModified,
+                    coverCacheKey,
                 )
 
                 val cueArray = JSONArray(cueResultsJson)
@@ -1265,13 +1287,19 @@ class MainActivity: FlutterFragmentActivity() {
 
             val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
             val fallbackExt = if (ext.isNotBlank()) ".${ext}" else null
-            val metadataObj = readAudioMetadataFromUri(doc.uri, name, fallbackExt)
+            val lastModified = try { doc.lastModified() } catch (_: Exception) { 0L }
+            val stableUri = doc.uri.toString()
+            val coverCacheKey = buildLibraryCoverCacheKey(stableUri, lastModified)
+            val metadataObj = readAudioMetadataFromUri(
+                doc.uri,
+                name,
+                fallbackExt,
+                coverCacheKey,
+            )
             if (metadataObj == null) {
                 errors++
             } else {
                 try {
-                    val lastModified = try { doc.lastModified() } catch (_: Exception) { 0L }
-                    val stableUri = doc.uri.toString()
                     metadataObj.put("id", buildStableLibraryId(stableUri))
                     metadataObj.put("filePath", stableUri)
                     metadataObj.put("fileModTime", lastModified)
@@ -1539,6 +1567,11 @@ class MainActivity: FlutterFragmentActivity() {
                 val audioName = try { audioDoc.name ?: "audio.flac" } catch (_: Exception) { "audio.flac" }
                 val audioExt = audioName.substringAfterLast('.', "").lowercase(Locale.ROOT)
                 val fallbackAudioExt = if (audioExt.isNotBlank()) ".$audioExt" else null
+                val audioLastModified = try { audioDoc.lastModified() } catch (_: Exception) { cueLastModified }
+                val coverCacheKey = buildLibraryCoverCacheKey(
+                    audioDoc.uri.toString(),
+                    audioLastModified,
+                )
 
                 tempAudioPath = copyUriToTemp(audioDoc.uri, fallbackAudioExt)
                 if (tempAudioPath == null) {
@@ -1555,11 +1588,12 @@ class MainActivity: FlutterFragmentActivity() {
                     tempAudioPath = renamedAudio.absolutePath
                 }
 
-                val cueResultsJson = Gobackend.scanCueSheetForLibrary(
+                val cueResultsJson = Gobackend.scanCueSheetForLibraryWithCoverCacheKey(
                     tempCuePath,
                     tempDir,
                     cueDoc.uri.toString(),
-                    cueLastModified
+                    cueLastModified,
+                    coverCacheKey,
                 )
 
                 val cueArray = JSONArray(cueResultsJson)
@@ -1656,13 +1690,19 @@ class MainActivity: FlutterFragmentActivity() {
 
             val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
             val fallbackExt = if (ext.isNotBlank()) ".${ext}" else null
-            val metadataObj = readAudioMetadataFromUri(doc.uri, name, fallbackExt)
+            val safeLastModified = try { doc.lastModified() } catch (_: Exception) { lastModified }
+            val stableUri = doc.uri.toString()
+            val coverCacheKey = buildLibraryCoverCacheKey(stableUri, safeLastModified)
+            val metadataObj = readAudioMetadataFromUri(
+                doc.uri,
+                name,
+                fallbackExt,
+                coverCacheKey,
+            )
             if (metadataObj == null) {
                 errors++
             } else {
                 try {
-                    val safeLastModified = try { doc.lastModified() } catch (_: Exception) { lastModified }
-                    val stableUri = doc.uri.toString()
                     metadataObj.put("id", buildStableLibraryId(stableUri))
                     metadataObj.put("filePath", stableUri)
                     metadataObj.put("fileModTime", safeLastModified)
