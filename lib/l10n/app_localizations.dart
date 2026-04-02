@@ -2248,6 +2248,18 @@ abstract class AppLocalizations {
   /// **'Lyrics not available for this track'**
   String get trackLyricsNotAvailable;
 
+  /// Message when no embedded lyrics in audio file
+  ///
+  /// In en, this message translates to:
+  /// **'No lyrics found in this file'**
+  String get trackLyricsNotInFile;
+
+  /// Action - fetch lyrics from online providers
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch from Online'**
+  String get trackFetchOnlineLyrics;
+
   /// Message when lyrics request times out
   ///
   /// In en, this message translates to:

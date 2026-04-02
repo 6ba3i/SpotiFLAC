@@ -1563,6 +1563,14 @@
   "@trackLyricsNotAvailable": {
     "description": "Message when lyrics not found"
   },
+  "trackLyricsNotInFile": "No lyrics found in this file",
+  "@trackLyricsNotInFile": {
+    "description": "Message when no embedded lyrics in audio file"
+  },
+  "trackFetchOnlineLyrics": "Fetch from Online",
+  "@trackFetchOnlineLyrics": {
+    "description": "Action - fetch lyrics from online providers"
+  },
   "trackLyricsTimeout": "Request timed out. Try again later.",
   "@trackLyricsTimeout": {
     "description": "Message when lyrics request times out"

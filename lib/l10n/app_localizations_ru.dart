@@ -1221,6 +1221,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Текст песни недоступен для этого трека';
 
   @override
+  String get trackLyricsNotInFile => 'No lyrics found in this file';
+
+  @override
+  String get trackFetchOnlineLyrics => 'Fetch from Online';
+
+  @override
   String get trackLyricsTimeout =>
       'Время ожидания запроса истекло. Повторите попытку позже.';
 

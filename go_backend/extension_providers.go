@@ -1037,6 +1037,14 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 					GoLog("[DownloadWithExtensionFallback] ReleaseDate from enrichment: %s\n", enrichedTrack.ReleaseDate)
 					req.ReleaseDate = enrichedTrack.ReleaseDate
 				}
+				if enrichedTrack.TrackNumber > 0 && req.TrackNumber == 0 {
+					GoLog("[DownloadWithExtensionFallback] TrackNumber from enrichment: %d\n", enrichedTrack.TrackNumber)
+					req.TrackNumber = enrichedTrack.TrackNumber
+				}
+				if enrichedTrack.DiscNumber > 0 && req.DiscNumber == 0 {
+					GoLog("[DownloadWithExtensionFallback] DiscNumber from enrichment: %d\n", enrichedTrack.DiscNumber)
+					req.DiscNumber = enrichedTrack.DiscNumber
+				}
 			}
 		}
 	}
@@ -1425,6 +1433,28 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 					if result.ISRC != "" {
 						resp.ISRC = result.ISRC
 					}
+				}
+
+				if req.AlbumName != "" && resp.Album == "" {
+					resp.Album = req.AlbumName
+				}
+				if req.AlbumArtist != "" && resp.AlbumArtist == "" {
+					resp.AlbumArtist = req.AlbumArtist
+				}
+				if req.ReleaseDate != "" && resp.ReleaseDate == "" {
+					resp.ReleaseDate = req.ReleaseDate
+				}
+				if req.ISRC != "" && resp.ISRC == "" {
+					resp.ISRC = req.ISRC
+				}
+				if req.TrackNumber > 0 && resp.TrackNumber == 0 {
+					resp.TrackNumber = req.TrackNumber
+				}
+				if req.DiscNumber > 0 && resp.DiscNumber == 0 {
+					resp.DiscNumber = req.DiscNumber
+				}
+				if req.CoverURL != "" && resp.CoverURL == "" {
+					resp.CoverURL = req.CoverURL
 				}
 
 				return resp, nil

@@ -1208,6 +1208,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get trackLyricsNotAvailable => 'Lirik tidak tersedia untuk lagu ini';
 
   @override
+  String get trackLyricsNotInFile => 'No lyrics found in this file';
+
+  @override
+  String get trackFetchOnlineLyrics => 'Fetch from Online';
+
+  @override
   String get trackLyricsTimeout => 'Permintaan timeout. Coba lagi nanti.';
 
   @override

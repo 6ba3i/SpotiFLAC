@@ -1220,6 +1220,12 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lyrics sind für diesen Titel nicht verfügbar';
 
   @override
+  String get trackLyricsNotInFile => 'No lyrics found in this file';
+
+  @override
+  String get trackFetchOnlineLyrics => 'Fetch from Online';
+
+  @override
   String get trackLyricsTimeout =>
       'Anfrage Timeout. Versuche es später erneut.';
 

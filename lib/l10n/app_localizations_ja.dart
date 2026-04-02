@@ -1195,6 +1195,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get trackLyricsNotAvailable => 'このトラックの歌詞は利用できません';
 
   @override
+  String get trackLyricsNotInFile => 'No lyrics found in this file';
+
+  @override
+  String get trackFetchOnlineLyrics => 'Fetch from Online';
+
+  @override
   String get trackLyricsTimeout => 'リクエストがタイムアウトしました。後ほどお試しください。';
 
   @override

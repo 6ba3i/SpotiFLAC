@@ -2162,13 +2162,26 @@ func resolveTidalTrackForRequest(req DownloadRequest, downloader *TidalDownloade
 		GoLog("[%s] Track %d verified: '%s - %s' ✓\n", logPrefix, trackID, resolved.ArtistName, resolved.Title)
 	}
 
+	// Use track_number / disc_number from the actual Tidal API data when the
+	// request doesn't carry them (e.g. downloads from search results / popular).
+	resolvedTrackNumber := req.TrackNumber
+	resolvedDiscNumber := req.DiscNumber
+	if actualTrack != nil {
+		if resolvedTrackNumber == 0 && actualTrack.TrackNumber > 0 {
+			resolvedTrackNumber = actualTrack.TrackNumber
+		}
+		if resolvedDiscNumber == 0 && actualTrack.VolumeNumber > 0 {
+			resolvedDiscNumber = actualTrack.VolumeNumber
+		}
+	}
+
 	track := &TidalTrack{
 		ID:           trackID,
 		Title:        strings.TrimSpace(req.TrackName),
 		ISRC:         strings.TrimSpace(req.ISRC),
 		Duration:     expectedDurationSec,
-		TrackNumber:  req.TrackNumber,
-		VolumeNumber: req.DiscNumber,
+		TrackNumber:  resolvedTrackNumber,
+		VolumeNumber: resolvedDiscNumber,
 	}
 	track.Artist.Name = strings.TrimSpace(req.ArtistName)
 	track.Album.Title = strings.TrimSpace(req.AlbumName)

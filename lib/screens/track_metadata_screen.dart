@@ -69,6 +69,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
   bool _lyricsEmbedded = false;
   bool _isEmbedding = false;
   bool _isInstrumental = false;
+  bool _embeddedLyricsChecked = false;
   bool _isConverting = false;
   bool _hasMetadataChanges = false;
   bool _hasLoadedResolvedAudioMetadata = false;
@@ -241,7 +242,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     }
 
     if (mounted && exists && _lyrics == null && !_lyricsLoading) {
-      _fetchLyrics();
+      _checkEmbeddedLyrics();
     }
     if (mounted &&
         exists &&
@@ -1664,7 +1665,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: _fetchLyrics,
+                      onPressed: _fetchOnlineLyrics,
                       child: Text(context.l10n.dialogRetry),
                     ),
                   ],
@@ -1732,6 +1733,46 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
                   ],
                 ],
               )
+            else if (_embeddedLyricsChecked && _fileExists)
+              Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.lyrics_outlined,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            context.l10n.trackLyricsNotInFile,
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: FilledButton.tonalIcon(
+                      onPressed: _fetchOnlineLyrics,
+                      icon: const Icon(Icons.cloud_download_outlined),
+                      label: Text(context.l10n.trackFetchOnlineLyrics),
+                    ),
+                  ),
+                ],
+              )
             else
               Center(
                 child: FilledButton.tonalIcon(
@@ -1746,6 +1787,134 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     );
   }
 
+  /// Check for lyrics embedded in the audio file only (no network requests).
+  /// Called automatically when the screen opens.
+  Future<void> _checkEmbeddedLyrics() async {
+    if (_lyricsLoading || !_fileExists) return;
+
+    setState(() {
+      _lyricsLoading = true;
+      _lyricsError = null;
+      _isInstrumental = false;
+      _lyricsSource = null;
+    });
+
+    try {
+      final embeddedResult =
+          await PlatformBridge.getLyricsLRCWithSource(
+            '',
+            trackName,
+            artistName,
+            filePath: cleanFilePath,
+            durationMs: 0,
+          ).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => <String, dynamic>{'lyrics': '', 'source': ''},
+          );
+
+      final embeddedLyrics = embeddedResult['lyrics']?.toString() ?? '';
+      final embeddedSource = embeddedResult['source']?.toString() ?? '';
+
+      if (mounted) {
+        if (embeddedLyrics.isNotEmpty) {
+          final cleanLyrics = _cleanLrcForDisplay(embeddedLyrics);
+          setState(() {
+            _lyrics = cleanLyrics;
+            _rawLyrics = embeddedLyrics;
+            _lyricsSource = embeddedSource.isNotEmpty
+                ? embeddedSource
+                : 'Embedded';
+            _lyricsEmbedded = true;
+            _lyricsLoading = false;
+            _embeddedLyricsChecked = true;
+          });
+        } else {
+          setState(() {
+            _lyricsLoading = false;
+            _embeddedLyricsChecked = true;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _lyricsLoading = false;
+          _embeddedLyricsChecked = true;
+        });
+      }
+    }
+  }
+
+  /// Fetch lyrics from online providers. Only called by user action.
+  Future<void> _fetchOnlineLyrics() async {
+    if (_lyricsLoading) return;
+
+    setState(() {
+      _lyricsLoading = true;
+      _lyricsError = null;
+      _isInstrumental = false;
+      _lyricsSource = null;
+    });
+
+    try {
+      final durationMs = (duration ?? 0) * 1000;
+
+      final result = await PlatformBridge.getLyricsLRCWithSource(
+        _spotifyId ?? '',
+        trackName,
+        artistName,
+        filePath: null,
+        durationMs: durationMs,
+      ).timeout(const Duration(seconds: 20));
+
+      final lrcText = result['lyrics']?.toString() ?? '';
+      final source = result['source']?.toString() ?? '';
+      final instrumental =
+          (result['instrumental'] as bool? ?? false) ||
+          lrcText == '[instrumental:true]';
+
+      if (mounted) {
+        if (instrumental) {
+          setState(() {
+            _isInstrumental = true;
+            _lyricsSource = source.isNotEmpty ? source : null;
+            _lyricsLoading = false;
+          });
+        } else if (lrcText.isEmpty) {
+          setState(() {
+            _lyricsError = context.l10n.trackLyricsNotAvailable;
+            _lyricsLoading = false;
+          });
+        } else {
+          final cleanLyrics = _cleanLrcForDisplay(lrcText);
+          setState(() {
+            _lyrics = cleanLyrics;
+            _rawLyrics = lrcText;
+            _lyricsSource = source.isNotEmpty ? source : null;
+            _lyricsEmbedded = false;
+            _lyricsLoading = false;
+          });
+        }
+      }
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          _lyricsError = context.l10n.trackLyricsTimeout;
+          _lyricsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _lyricsError = context.l10n.trackLyricsLoadFailed;
+          _lyricsLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Full lyrics fetch: check embedded first, then online.
+  /// Used by the "Load Lyrics" button when file doesn't exist (non-local items).
   Future<void> _fetchLyrics() async {
     if (_lyricsLoading) return;
 
@@ -1786,6 +1955,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
                   : 'Embedded';
               _lyricsEmbedded = true;
               _lyricsLoading = false;
+              _embeddedLyricsChecked = true;
             });
           }
           return;

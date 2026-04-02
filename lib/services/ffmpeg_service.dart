@@ -190,10 +190,10 @@ class FFmpegService {
     String command;
     if (format == 'opus') {
       command =
-          '-i "$inputPath" -codec:a libopus -b:a $bitrateValue -vbr on -compression_level 10 -map 0:a "$outputPath" -y';
+          '-v error -hide_banner -i "$inputPath" -codec:a libopus -b:a $bitrateValue -vbr on -compression_level 10 -map 0:a "$outputPath" -y';
     } else {
       command =
-          '-i "$inputPath" -codec:a libmp3lame -b:a $bitrateValue -map 0:a -id3v2_version 3 "$outputPath" -y';
+          '-v error -hide_banner -i "$inputPath" -codec:a libmp3lame -b:a $bitrateValue -map 0:a -id3v2_version 3 "$outputPath" -y';
     }
 
     final result = await _execute(command);
@@ -327,7 +327,7 @@ class FFmpegService {
     final outputPath = _buildOutputPath(inputPath, '.mp3');
 
     final command =
-        '-i "$inputPath" -codec:a libmp3lame -b:a $bitrate -map 0:a -map_metadata 0 -id3v2_version 3 "$outputPath" -y';
+        '-v error -hide_banner -i "$inputPath" -codec:a libmp3lame -b:a $bitrate -map 0:a -map_metadata 0 -id3v2_version 3 "$outputPath" -y';
 
     final result = await _execute(command);
 
@@ -779,7 +779,7 @@ class FFmpegService {
     final outputPath = _buildOutputPath(inputPath, '.opus');
 
     final command =
-        '-i "$inputPath" -codec:a libopus -b:a $bitrate -vbr on -compression_level 10 -map 0:a -map_metadata 0 "$outputPath" -y';
+        '-v error -hide_banner -i "$inputPath" -codec:a libopus -b:a $bitrate -vbr on -compression_level 10 -map 0:a -map_metadata 0 "$outputPath" -y';
 
     final result = await _execute(command);
 
@@ -852,10 +852,10 @@ class FFmpegService {
     String command;
     if (codec == 'alac') {
       command =
-          '-i "$inputPath" -codec:a alac -map 0:a -map_metadata 0 "$outputPath" -y';
+          '-v error -hide_banner -i "$inputPath" -codec:a alac -map 0:a -map_metadata 0 "$outputPath" -y';
     } else {
       command =
-          '-i "$inputPath" -codec:a aac -b:a $bitrate -map 0:a -map_metadata 0 "$outputPath" -y';
+          '-v error -hide_banner -i "$inputPath" -codec:a aac -b:a $bitrate -map 0:a -map_metadata 0 "$outputPath" -y';
     }
 
     final result = await _execute(command);
@@ -895,8 +895,10 @@ class FFmpegService {
     // Run FFmpeg with ebur128 filter + astats for true peak.
     // -nostats suppresses the interactive progress line.
     // ebur128=peak=true prints integrated loudness + true peak.
+    // framelog=quiet suppresses per-frame measurements (very verbose),
+    // keeping only the final summary which we parse.
     final command =
-        '-nostats -i "$filePath" -filter_complex ebur128=peak=true -f null -';
+        '-hide_banner -nostats -i "$filePath" -filter_complex ebur128=peak=true:framelog=quiet -f null -';
 
     _log.d(
       'Scanning ReplayGain for: ${filePath.split(Platform.pathSeparator).last}',
@@ -998,7 +1000,7 @@ class FFmpegService {
     // -map_metadata 0 preserves all existing metadata from the input.
     // -metadata flags add/overwrite only the specified keys.
     final command =
-        '-i "$filePath" -map 0 -c copy -map_metadata 0 '
+        '-v error -hide_banner -i "$filePath" -map 0 -c copy -map_metadata 0 '
         '-metadata REPLAYGAIN_ALBUM_GAIN="$sanitizedGain" '
         '-metadata REPLAYGAIN_ALBUM_PEAK="$sanitizedPeak" '
         '"$tempOutput" -y';
@@ -1048,6 +1050,7 @@ class FFmpegService {
     final tempOutput = _nextTempEmbedPath(tempDir.path, '.flac');
 
     final StringBuffer cmdBuffer = StringBuffer();
+    cmdBuffer.write('-v error -hide_banner ');
     cmdBuffer.write('-i "$flacPath" ');
 
     if (coverPath != null) {
@@ -1127,6 +1130,7 @@ class FFmpegService {
     final tempOutput = _nextTempEmbedPath(tempDir.path, '.mp3');
 
     final StringBuffer cmdBuffer = StringBuffer();
+    cmdBuffer.write('-v error -hide_banner ');
     cmdBuffer.write('-i "$mp3Path" ');
 
     if (coverPath != null) {
@@ -1213,6 +1217,9 @@ class FFmpegService {
     final tempOutput = _nextTempEmbedPath(tempDir.path, '.opus');
     final mapMetaValue = preserveMetadata ? '0' : '-1';
     final arguments = <String>[
+      '-v',
+      'error',
+      '-hide_banner',
       '-i',
       opusPath,
       '-map',
@@ -1305,6 +1312,7 @@ class FFmpegService {
     final tempOutput = _nextTempEmbedPath(tempDir.path, '.m4a');
 
     final cmdBuffer = StringBuffer();
+    cmdBuffer.write('-v error -hide_banner ');
     cmdBuffer.write('-i "$m4aPath" ');
 
     final hasCover = coverPath != null && await File(coverPath).exists();
@@ -1528,10 +1536,10 @@ class FFmpegService {
     String command;
     if (format == 'opus') {
       command =
-          '-i "$inputPath" -codec:a libopus -b:a $bitrate -vbr on -compression_level 10 -map 0:a "$outputPath" -y';
+          '-v error -hide_banner -i "$inputPath" -codec:a libopus -b:a $bitrate -vbr on -compression_level 10 -map 0:a "$outputPath" -y';
     } else {
       command =
-          '-i "$inputPath" -codec:a libmp3lame -b:a $bitrate -map 0:a -id3v2_version 3 "$outputPath" -y';
+          '-v error -hide_banner -i "$inputPath" -codec:a libmp3lame -b:a $bitrate -map 0:a -id3v2_version 3 "$outputPath" -y';
     }
 
     _log.i(
@@ -1605,6 +1613,7 @@ class FFmpegService {
     final outputPath = _buildOutputPath(inputPath, '.m4a');
 
     final cmdBuffer = StringBuffer();
+    cmdBuffer.write('-v error -hide_banner ');
     cmdBuffer.write('-i "$inputPath" ');
 
     final hasCover =
@@ -1667,6 +1676,7 @@ class FFmpegService {
     final outputPath = _buildOutputPath(inputPath, '.flac');
 
     final cmdBuffer = StringBuffer();
+    cmdBuffer.write('-v error -hide_banner ');
     cmdBuffer.write('-i "$inputPath" ');
 
     final hasCover =
@@ -2080,6 +2090,7 @@ class FFmpegService {
       final outputPath = '$outputDir${Platform.pathSeparator}$outputFileName';
 
       final StringBuffer cmdBuffer = StringBuffer();
+      cmdBuffer.write('-v error -hide_banner ');
       cmdBuffer.write('-i "$audioPath" ');
 
       final startTime = _formatSecondsForFFmpeg(track.startSec);
