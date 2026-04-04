@@ -17,7 +17,7 @@ type HTTPResponse struct {
 	Headers    map[string]string `json:"headers"`
 }
 
-func (r *ExtensionRuntime) validateDomain(urlStr string) error {
+func (r *extensionRuntime) validateDomain(urlStr string) error {
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
@@ -49,7 +49,7 @@ func (r *ExtensionRuntime) validateDomain(urlStr string) error {
 	return nil
 }
 
-func (r *ExtensionRuntime) httpGet(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpGet(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"error": "URL is required",
@@ -124,7 +124,7 @@ func (r *ExtensionRuntime) httpGet(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) httpPost(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpPost(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"error": "URL is required",
@@ -221,7 +221,7 @@ func (r *ExtensionRuntime) httpPost(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) httpRequest(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpRequest(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"error": "URL is required",
@@ -330,19 +330,19 @@ func (r *ExtensionRuntime) httpRequest(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) httpPut(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpPut(call goja.FunctionCall) goja.Value {
 	return r.httpMethodShortcut("PUT", call)
 }
 
-func (r *ExtensionRuntime) httpDelete(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpDelete(call goja.FunctionCall) goja.Value {
 	return r.httpMethodShortcut("DELETE", call)
 }
 
-func (r *ExtensionRuntime) httpPatch(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpPatch(call goja.FunctionCall) goja.Value {
 	return r.httpMethodShortcut("PATCH", call)
 }
 
-func (r *ExtensionRuntime) httpMethodShortcut(method string, call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpMethodShortcut(method string, call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"error": "URL is required",
@@ -455,7 +455,7 @@ func (r *ExtensionRuntime) httpMethodShortcut(method string, call goja.FunctionC
 	})
 }
 
-func (r *ExtensionRuntime) httpClearCookies(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) httpClearCookies(call goja.FunctionCall) goja.Value {
 	if jar, ok := r.cookieJar.(*simpleCookieJar); ok {
 		jar.mu.Lock()
 		jar.cookies = make(map[string][]*http.Cookie)

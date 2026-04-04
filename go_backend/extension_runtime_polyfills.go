@@ -12,7 +12,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-func (r *ExtensionRuntime) fetchPolyfill(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fetchPolyfill(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.createFetchError("URL is required")
 	}
@@ -133,7 +133,7 @@ func (r *ExtensionRuntime) fetchPolyfill(call goja.FunctionCall) goja.Value {
 	return responseObj
 }
 
-func (r *ExtensionRuntime) createFetchError(message string) goja.Value {
+func (r *extensionRuntime) createFetchError(message string) goja.Value {
 	errorObj := r.vm.NewObject()
 	errorObj.Set("ok", false)
 	errorObj.Set("status", 0)
@@ -148,7 +148,7 @@ func (r *ExtensionRuntime) createFetchError(message string) goja.Value {
 	return errorObj
 }
 
-func (r *ExtensionRuntime) atobPolyfill(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) atobPolyfill(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -164,7 +164,7 @@ func (r *ExtensionRuntime) atobPolyfill(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(string(decoded))
 }
 
-func (r *ExtensionRuntime) btoaPolyfill(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) btoaPolyfill(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -172,7 +172,7 @@ func (r *ExtensionRuntime) btoaPolyfill(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(base64.StdEncoding.EncodeToString([]byte(input)))
 }
 
-func (r *ExtensionRuntime) registerTextEncoderDecoder(vm *goja.Runtime) {
+func (r *extensionRuntime) registerTextEncoderDecoder(vm *goja.Runtime) {
 	vm.Set("TextEncoder", func(call goja.ConstructorCall) *goja.Object {
 		encoder := call.This
 		encoder.Set("encoding", "utf-8")
@@ -252,7 +252,7 @@ func (r *ExtensionRuntime) registerTextEncoderDecoder(vm *goja.Runtime) {
 	})
 }
 
-func (r *ExtensionRuntime) registerURLClass(vm *goja.Runtime) {
+func (r *extensionRuntime) registerURLClass(vm *goja.Runtime) {
 	vm.Set("URL", func(call goja.ConstructorCall) *goja.Object {
 		urlObj := call.This
 
@@ -416,7 +416,7 @@ func (r *ExtensionRuntime) registerURLClass(vm *goja.Runtime) {
 	})
 }
 
-func (r *ExtensionRuntime) registerJSONGlobal(vm *goja.Runtime) {
+func (r *extensionRuntime) registerJSONGlobal(vm *goja.Runtime) {
 	jsonScript := `
 		if (typeof JSON === 'undefined') {
 			var JSON = {

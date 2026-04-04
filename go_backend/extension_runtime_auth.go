@@ -52,7 +52,7 @@ func summarizeURLForLog(urlStr string) string {
 	return fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, parsed.Path)
 }
 
-func (r *ExtensionRuntime) authOpenUrl(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authOpenUrl(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -99,7 +99,7 @@ func (r *ExtensionRuntime) authOpenUrl(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) authGetCode(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authGetCode(call goja.FunctionCall) goja.Value {
 	extensionAuthStateMu.RLock()
 	defer extensionAuthStateMu.RUnlock()
 
@@ -111,7 +111,7 @@ func (r *ExtensionRuntime) authGetCode(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(state.AuthCode)
 }
 
-func (r *ExtensionRuntime) authSetCode(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authSetCode(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(false)
 	}
@@ -149,7 +149,7 @@ func (r *ExtensionRuntime) authSetCode(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(true)
 }
 
-func (r *ExtensionRuntime) authClear(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authClear(call goja.FunctionCall) goja.Value {
 	extensionAuthStateMu.Lock()
 	delete(extensionAuthState, r.extensionID)
 	extensionAuthStateMu.Unlock()
@@ -162,7 +162,7 @@ func (r *ExtensionRuntime) authClear(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(true)
 }
 
-func (r *ExtensionRuntime) authIsAuthenticated(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authIsAuthenticated(call goja.FunctionCall) goja.Value {
 	extensionAuthStateMu.RLock()
 	defer extensionAuthStateMu.RUnlock()
 
@@ -178,7 +178,7 @@ func (r *ExtensionRuntime) authIsAuthenticated(call goja.FunctionCall) goja.Valu
 	return r.vm.ToValue(state.IsAuthenticated)
 }
 
-func (r *ExtensionRuntime) authGetTokens(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authGetTokens(call goja.FunctionCall) goja.Value {
 	extensionAuthStateMu.RLock()
 	defer extensionAuthStateMu.RUnlock()
 
@@ -228,7 +228,7 @@ func generatePKCEChallenge(verifier string) string {
 	return base64.RawURLEncoding.EncodeToString(hash[:])
 }
 
-func (r *ExtensionRuntime) authGeneratePKCE(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authGeneratePKCE(call goja.FunctionCall) goja.Value {
 	length := 64
 	if len(call.Arguments) > 0 && !goja.IsUndefined(call.Arguments[0]) {
 		if l, ok := call.Arguments[0].Export().(float64); ok && l >= 43 && l <= 128 {
@@ -265,7 +265,7 @@ func (r *ExtensionRuntime) authGeneratePKCE(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) authGetPKCE(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authGetPKCE(call goja.FunctionCall) goja.Value {
 	extensionAuthStateMu.RLock()
 	defer extensionAuthStateMu.RUnlock()
 
@@ -281,7 +281,7 @@ func (r *ExtensionRuntime) authGetPKCE(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) authStartOAuthWithPKCE(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authStartOAuthWithPKCE(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -385,7 +385,7 @@ func (r *ExtensionRuntime) authStartOAuthWithPKCE(call goja.FunctionCall) goja.V
 	})
 }
 
-func (r *ExtensionRuntime) authExchangeCodeWithPKCE(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) authExchangeCodeWithPKCE(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,

@@ -2302,7 +2302,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 
 		deezerClient := GetDeezerClient()
 		GoLog("[ReEnrich] Trying metadata providers in configured priority...\n")
-		manager := GetExtensionManager()
+		manager := getExtensionManager()
 		if identifierTrack, err := resolveReEnrichTrackFromIdentifiers(req); err == nil && identifierTrack != nil {
 			GoLog("[ReEnrich] Identifier-first metadata match (%s): %s - %s (album: %s, date: %s)\n",
 				identifierTrack.ProviderID, identifierTrack.Name, identifierTrack.Artists, identifierTrack.AlbumName, identifierTrack.ReleaseDate)
@@ -2542,7 +2542,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 }
 
 func InitExtensionSystem(extensionsDir, dataDir string) error {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	if err := manager.SetDirectories(extensionsDir, dataDir); err != nil {
 		return err
 	}
@@ -2556,7 +2556,7 @@ func InitExtensionSystem(extensionsDir, dataDir string) error {
 }
 
 func LoadExtensionsFromDir(dirPath string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	loaded, errors := manager.LoadExtensionsFromDirectory(dirPath)
 
 	result := map[string]interface{}{
@@ -2577,7 +2577,7 @@ func LoadExtensionsFromDir(dirPath string) (string, error) {
 }
 
 func LoadExtensionFromPath(filePath string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.LoadExtensionFromFile(filePath)
 	if err != nil {
 		return "", err
@@ -2600,17 +2600,17 @@ func LoadExtensionFromPath(filePath string) (string, error) {
 }
 
 func UnloadExtensionByID(extensionID string) error {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	return manager.UnloadExtension(extensionID)
 }
 
 func RemoveExtensionByID(extensionID string) error {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	return manager.RemoveExtension(extensionID)
 }
 
 func UpgradeExtensionFromPath(filePath string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.UpgradeExtension(filePath)
 	if err != nil {
 		return "", err
@@ -2632,17 +2632,17 @@ func UpgradeExtensionFromPath(filePath string) (string, error) {
 }
 
 func CheckExtensionUpgradeFromPath(filePath string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	return manager.CheckExtensionUpgradeJSON(filePath)
 }
 
 func GetInstalledExtensions() (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	return manager.GetInstalledExtensionsJSON()
 }
 
 func SetExtensionEnabledByID(extensionID string, enabled bool) error {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	return manager.SetExtensionEnabled(extensionID, enabled)
 }
 
@@ -2707,12 +2707,12 @@ func SetExtensionSettingsJSON(extensionID, settingsJSON string) error {
 		return err
 	}
 
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	return manager.InitializeExtension(extensionID, settings)
 }
 
 func SearchTracksWithExtensionsJSON(query string, limit int) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	tracks, err := manager.SearchTracksWithExtensions(query, limit)
 	if err != nil {
 		return "", err
@@ -2727,7 +2727,7 @@ func SearchTracksWithExtensionsJSON(query string, limit int) (string, error) {
 }
 
 func SearchTracksWithMetadataProvidersJSON(query string, limit int, includeExtensions bool) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	tracks, err := manager.SearchTracksWithMetadataProviders(query, limit, includeExtensions)
 	if err != nil {
 		return "", err
@@ -2774,12 +2774,12 @@ func DownloadWithExtensionsJSON(requestJSON string) (string, error) {
 }
 
 func CleanupExtensions() {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	manager.UnloadAllExtensions()
 }
 
 func InvokeExtensionActionJSON(extensionID, actionName string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	result, err := manager.InvokeAction(extensionID, actionName)
 	if err != nil {
 		return "", err
@@ -2916,7 +2916,7 @@ func GetAllPendingFFmpegCommandsJSON() (string, error) {
 }
 
 func EnrichTrackWithExtensionJSON(extensionID, trackJSON string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
 		return trackJSON, nil
@@ -2931,7 +2931,7 @@ func EnrichTrackWithExtensionJSON(extensionID, trackJSON string) (string, error)
 		return trackJSON, fmt.Errorf("failed to parse track: %w", err)
 	}
 
-	provider := NewExtensionProviderWrapper(ext)
+	provider := newExtensionProviderWrapper(ext)
 	enrichedTrack, err := provider.EnrichTrack(&track)
 	if err != nil {
 		return trackJSON, nil
@@ -2946,7 +2946,7 @@ func EnrichTrackWithExtensionJSON(extensionID, trackJSON string) (string, error)
 }
 
 func CustomSearchWithExtensionJSON(extensionID, query string, optionsJSON string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
 		return "", err
@@ -2963,7 +2963,7 @@ func CustomSearchWithExtensionJSON(extensionID, query string, optionsJSON string
 		}
 	}
 
-	provider := NewExtensionProviderWrapper(ext)
+	provider := newExtensionProviderWrapper(ext)
 	tracks, err := provider.CustomSearch(query, options)
 	if err != nil {
 		return "", err
@@ -3001,7 +3001,7 @@ func CustomSearchWithExtensionJSON(extensionID, query string, optionsJSON string
 }
 
 func GetSearchProvidersJSON() (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	providers := manager.GetSearchProviders()
 
 	result := make([]map[string]interface{}, 0, len(providers))
@@ -3024,7 +3024,7 @@ func GetSearchProvidersJSON() (string, error) {
 }
 
 func HandleURLWithExtensionJSON(url string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	resultWithID, err := manager.HandleURLWithExtension(url)
 	if err != nil {
 		return "", err
@@ -3194,7 +3194,7 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 }
 
 func FindURLHandlerJSON(url string) string {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	handler := manager.FindURLHandler(url)
 	if handler == nil {
 		return ""
@@ -3203,7 +3203,7 @@ func FindURLHandlerJSON(url string) string {
 }
 
 func GetAlbumWithExtensionJSON(extensionID, albumID string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
 		return "", err
@@ -3216,7 +3216,7 @@ func GetAlbumWithExtensionJSON(extensionID, albumID string) (string, error) {
 		return "", fmt.Errorf("extension '%s' is disabled", extensionID)
 	}
 
-	provider := NewExtensionProviderWrapper(ext)
+	provider := newExtensionProviderWrapper(ext)
 	album, err := provider.GetAlbum(albumID)
 	if err != nil {
 		return "", err
@@ -3279,7 +3279,7 @@ func GetAlbumWithExtensionJSON(extensionID, albumID string) (string, error) {
 }
 
 func GetPlaylistWithExtensionJSON(extensionID, playlistID string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
 		return "", err
@@ -3380,7 +3380,7 @@ func GetPlaylistWithExtensionJSON(extensionID, playlistID string) (string, error
 }
 
 func GetArtistWithExtensionJSON(extensionID, artistID string) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
 		return "", err
@@ -3390,7 +3390,7 @@ func GetArtistWithExtensionJSON(extensionID, artistID string) (string, error) {
 		return "", fmt.Errorf("extension '%s' is not a metadata provider", extensionID)
 	}
 
-	provider := NewExtensionProviderWrapper(ext)
+	provider := newExtensionProviderWrapper(ext)
 	artist, err := provider.GetArtist(artistID)
 	if err != nil {
 		return "", err
@@ -3485,7 +3485,7 @@ func GetArtistWithExtensionJSON(extensionID, artistID string) (string, error) {
 }
 
 func GetURLHandlersJSON() (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	handlers := manager.GetURLHandlers()
 
 	result := make([]map[string]interface{}, 0, len(handlers))
@@ -3513,7 +3513,7 @@ func RunPostProcessingJSON(filePath, metadataJSON string) (string, error) {
 		}
 	}
 
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	result, err := manager.RunPostProcessing(filePath, metadata)
 	if err != nil {
 		return "", err
@@ -3542,7 +3542,7 @@ func RunPostProcessingV2JSON(inputJSON, metadataJSON string) (string, error) {
 		}
 	}
 
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	result, err := manager.RunPostProcessingV2(input, metadata)
 	if err != nil {
 		return "", err
@@ -3557,7 +3557,7 @@ func RunPostProcessingV2JSON(inputJSON, metadataJSON string) (string, error) {
 }
 
 func GetPostProcessingProvidersJSON() (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	providers := manager.GetPostProcessingProviders()
 
 	result := make([]map[string]interface{}, 0, len(providers))
@@ -3723,7 +3723,7 @@ func ClearStoreCacheJSON() error {
 }
 
 func callExtensionFunctionJSON(extensionID, functionName string, timeout time.Duration) (string, error) {
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
 		return "", err

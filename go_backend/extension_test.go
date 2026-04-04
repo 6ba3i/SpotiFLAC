@@ -99,7 +99,7 @@ func TestIsDomainAllowed(t *testing.T) {
 
 func TestExtensionRuntime_NetworkSandbox(t *testing.T) {
 	// Create a mock extension with limited network permissions
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID: "test-ext",
 		Manifest: &ExtensionManifest{
 			Name: "test-ext",
@@ -110,7 +110,7 @@ func TestExtensionRuntime_NetworkSandbox(t *testing.T) {
 		DataDir: t.TempDir(),
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 
 	if err := runtime.validateDomain("https://api.allowed.com/path"); err != nil {
 		t.Errorf("Expected api.allowed.com to be allowed, got error: %v", err)
@@ -132,7 +132,7 @@ func TestExtensionRuntime_NetworkSandbox(t *testing.T) {
 func TestExtensionRuntime_FileSandbox(t *testing.T) {
 	tempDir := t.TempDir()
 
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID: "test-ext",
 		Manifest: &ExtensionManifest{
 			Name: "test-ext",
@@ -143,7 +143,7 @@ func TestExtensionRuntime_FileSandbox(t *testing.T) {
 		DataDir: tempDir,
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 
 	validPath, err := runtime.validatePath("test.txt")
 	if err != nil {
@@ -177,7 +177,7 @@ func TestExtensionRuntime_FileSandbox(t *testing.T) {
 		t.Error("Expected absolute path to be blocked")
 	}
 
-	extNoFile := &LoadedExtension{
+	extNoFile := &loadedExtension{
 		ID: "test-ext-no-file",
 		Manifest: &ExtensionManifest{
 			Name: "test-ext-no-file",
@@ -187,7 +187,7 @@ func TestExtensionRuntime_FileSandbox(t *testing.T) {
 		},
 		DataDir: tempDir,
 	}
-	runtimeNoFile := NewExtensionRuntime(extNoFile)
+	runtimeNoFile := newExtensionRuntime(extNoFile)
 	_, err = runtimeNoFile.validatePath("test.txt")
 	if err == nil {
 		t.Error("Expected file access to be denied without file permission")
@@ -195,7 +195,7 @@ func TestExtensionRuntime_FileSandbox(t *testing.T) {
 }
 
 func TestExtensionRuntime_UtilityFunctions(t *testing.T) {
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID: "test-ext",
 		Manifest: &ExtensionManifest{
 			Name: "test-ext",
@@ -203,7 +203,7 @@ func TestExtensionRuntime_UtilityFunctions(t *testing.T) {
 		DataDir: t.TempDir(),
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 	vm := goja.New()
 	runtime.RegisterAPIs(vm)
 
@@ -243,7 +243,7 @@ func TestExtensionRuntime_UtilityFunctions(t *testing.T) {
 
 func TestExtensionRuntime_SSRFProtection(t *testing.T) {
 	// Create extension with limited network permissions
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID: "test-ext",
 		Manifest: &ExtensionManifest{
 			Name: "test-ext",
@@ -254,7 +254,7 @@ func TestExtensionRuntime_SSRFProtection(t *testing.T) {
 		DataDir: t.TempDir(),
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 
 	privateIPs := []string{
 		"http://localhost/admin",

@@ -43,12 +43,12 @@ func compareVersions(v1, v2 string) int {
 	return 0
 }
 
-type LoadedExtension struct {
+type loadedExtension struct {
 	ID          string             `json:"id"`
 	Manifest    *ExtensionManifest `json:"manifest"`
 	VM          *goja.Runtime      `json:"-"`
 	VMMu        sync.Mutex         `json:"-"`
-	runtime     *ExtensionRuntime
+	runtime     *extensionRuntime
 	initialized bool
 	Enabled     bool   `json:"enabled"`
 	Error       string `json:"error,omitempty"`
@@ -73,7 +73,7 @@ func getExtensionInitSettings(extensionID string) map[string]interface{} {
 	return filtered
 }
 
-func ensureRuntimeReadyLocked(ext *LoadedExtension, applyStoredSettings bool) error {
+func ensureRuntimeReadyLocked(ext *loadedExtension, applyStoredSettings bool) error {
 	if ext.VM == nil || ext.runtime == nil {
 		if err := initializeVMLocked(ext); err != nil {
 			ext.Error = err.Error()
@@ -100,14 +100,14 @@ func ensureRuntimeReadyLocked(ext *LoadedExtension, applyStoredSettings bool) er
 	return nil
 }
 
-func (ext *LoadedExtension) ensureRuntimeReady() error {
+func (ext *loadedExtension) ensureRuntimeReady() error {
 	ext.VMMu.Lock()
 	defer ext.VMMu.Unlock()
 
 	return ensureRuntimeReadyLocked(ext, true)
 }
 
-func (ext *LoadedExtension) lockReadyVM() (*goja.Runtime, error) {
+func (ext *loadedExtension) lockReadyVM() (*goja.Runtime, error) {
 	ext.VMMu.Lock()
 	if err := ensureRuntimeReadyLocked(ext, true); err != nil {
 		ext.VMMu.Unlock()
@@ -116,28 +116,28 @@ func (ext *LoadedExtension) lockReadyVM() (*goja.Runtime, error) {
 	return ext.VM, nil
 }
 
-type ExtensionManager struct {
+type extensionManager struct {
 	mu            sync.RWMutex
-	extensions    map[string]*LoadedExtension
+	extensions    map[string]*loadedExtension
 	extensionsDir string
 	dataDir       string
 }
 
 var (
-	globalExtManager     *ExtensionManager
+	globalExtManager     *extensionManager
 	globalExtManagerOnce sync.Once
 )
 
-func GetExtensionManager() *ExtensionManager {
+func getExtensionManager() *extensionManager {
 	globalExtManagerOnce.Do(func() {
-		globalExtManager = &ExtensionManager{
-			extensions: make(map[string]*LoadedExtension),
+		globalExtManager = &extensionManager{
+			extensions: make(map[string]*loadedExtension),
 		}
 	})
 	return globalExtManager
 }
 
-func (m *ExtensionManager) SetDirectories(extensionsDir, dataDir string) error {
+func (m *extensionManager) SetDirectories(extensionsDir, dataDir string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -154,7 +154,7 @@ func (m *ExtensionManager) SetDirectories(extensionsDir, dataDir string) error {
 	return nil
 }
 
-func (m *ExtensionManager) LoadExtensionFromFile(filePath string) (*LoadedExtension, error) {
+func (m *extensionManager) LoadExtensionFromFile(filePath string) (*loadedExtension, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".spotiflac-ext") {
 		return nil, fmt.Errorf("Invalid file format. Please select a .spotiflac-ext file")
 	}
@@ -272,7 +272,7 @@ func (m *ExtensionManager) LoadExtensionFromFile(filePath string) (*LoadedExtens
 		return nil, fmt.Errorf("failed to create extension data directory: %w", err)
 	}
 
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID:        manifest.Name,
 		Manifest:  manifest,
 		Enabled:   false, // New extensions start disabled
@@ -292,7 +292,7 @@ func (m *ExtensionManager) LoadExtensionFromFile(filePath string) (*LoadedExtens
 	return ext, nil
 }
 
-func initializeVMLocked(ext *LoadedExtension) error {
+func initializeVMLocked(ext *loadedExtension) error {
 	ext.VM = nil
 	ext.runtime = nil
 	ext.initialized = false
@@ -305,7 +305,7 @@ func initializeVMLocked(ext *LoadedExtension) error {
 		return fmt.Errorf("failed to read index.js: %w", err)
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 	ext.runtime = runtime
 	runtime.RegisterAPIs(vm)
 	runtime.RegisterGoBackendAPIs(vm)
@@ -342,14 +342,14 @@ func initializeVMLocked(ext *LoadedExtension) error {
 	return nil
 }
 
-func (m *ExtensionManager) initializeVM(ext *LoadedExtension) error {
+func (m *extensionManager) initializeVM(ext *loadedExtension) error {
 	ext.VMMu.Lock()
 	defer ext.VMMu.Unlock()
 	return initializeVMLocked(ext)
 }
 
 func initializeExtensionWithSettingsLocked(
-	ext *LoadedExtension,
+	ext *loadedExtension,
 	settings map[string]interface{},
 ) error {
 	if ext.VM == nil {
@@ -405,7 +405,7 @@ func initializeExtensionWithSettingsLocked(
 	return nil
 }
 
-func runCleanupLocked(ext *LoadedExtension) error {
+func runCleanupLocked(ext *loadedExtension) error {
 	if ext.VM != nil {
 		script := `
 			(function() {
@@ -446,7 +446,7 @@ func runCleanupLocked(ext *LoadedExtension) error {
 	return nil
 }
 
-func teardownVMLocked(ext *LoadedExtension) {
+func teardownVMLocked(ext *loadedExtension) {
 	if err := runCleanupLocked(ext); err != nil {
 		GoLog("[Extension] Error calling cleanup for %s: %v\n", ext.ID, err)
 	}
@@ -461,7 +461,7 @@ func teardownVMLocked(ext *LoadedExtension) {
 	ext.initialized = false
 }
 
-func validateExtensionLoad(ext *LoadedExtension) error {
+func validateExtensionLoad(ext *loadedExtension) error {
 	ext.VMMu.Lock()
 	defer ext.VMMu.Unlock()
 
@@ -472,7 +472,7 @@ func validateExtensionLoad(ext *LoadedExtension) error {
 	return nil
 }
 
-func (m *ExtensionManager) UnloadExtension(extensionID string) error {
+func (m *extensionManager) UnloadExtension(extensionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -491,7 +491,7 @@ func (m *ExtensionManager) UnloadExtension(extensionID string) error {
 	return nil
 }
 
-func (m *ExtensionManager) GetExtension(extensionID string) (*LoadedExtension, error) {
+func (m *extensionManager) GetExtension(extensionID string) (*loadedExtension, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -502,18 +502,18 @@ func (m *ExtensionManager) GetExtension(extensionID string) (*LoadedExtension, e
 	return ext, nil
 }
 
-func (m *ExtensionManager) GetAllExtensions() []*LoadedExtension {
+func (m *extensionManager) GetAllExtensions() []*loadedExtension {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	result := make([]*LoadedExtension, 0, len(m.extensions))
+	result := make([]*loadedExtension, 0, len(m.extensions))
 	for _, ext := range m.extensions {
 		result = append(result, ext)
 	}
 	return result
 }
 
-func (m *ExtensionManager) SetExtensionEnabled(extensionID string, enabled bool) error {
+func (m *extensionManager) SetExtensionEnabled(extensionID string, enabled bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -547,7 +547,7 @@ func (m *ExtensionManager) SetExtensionEnabled(extensionID string, enabled bool)
 	return nil
 }
 
-func (m *ExtensionManager) LoadExtensionsFromDirectory(dirPath string) ([]string, []error) {
+func (m *extensionManager) LoadExtensionsFromDirectory(dirPath string) ([]string, []error) {
 	var loaded []string
 	var errors []error
 
@@ -585,7 +585,7 @@ func (m *ExtensionManager) LoadExtensionsFromDirectory(dirPath string) ([]string
 	return loaded, errors
 }
 
-func (m *ExtensionManager) loadExtensionFromDirectory(dirPath string) (*LoadedExtension, error) {
+func (m *extensionManager) loadExtensionFromDirectory(dirPath string) (*loadedExtension, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -615,7 +615,7 @@ func (m *ExtensionManager) loadExtensionFromDirectory(dirPath string) (*LoadedEx
 		return nil, fmt.Errorf("failed to create extension data directory: %w", err)
 	}
 
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID:        manifest.Name,
 		Manifest:  manifest,
 		Enabled:   false, // Will be restored from settings store
@@ -643,7 +643,7 @@ func (m *ExtensionManager) loadExtensionFromDirectory(dirPath string) (*LoadedEx
 	return ext, nil
 }
 
-func (m *ExtensionManager) RemoveExtension(extensionID string) error {
+func (m *extensionManager) RemoveExtension(extensionID string) error {
 	ext, err := m.GetExtension(extensionID)
 	if err != nil {
 		return err
@@ -663,7 +663,7 @@ func (m *ExtensionManager) RemoveExtension(extensionID string) error {
 }
 
 // Only allows upgrades (new version > current version), not downgrades
-func (m *ExtensionManager) UpgradeExtension(filePath string) (*LoadedExtension, error) {
+func (m *extensionManager) UpgradeExtension(filePath string) (*loadedExtension, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".spotiflac-ext") {
 		return nil, fmt.Errorf("Invalid file format. Please select a .spotiflac-ext file")
 	}
@@ -777,7 +777,7 @@ func (m *ExtensionManager) UpgradeExtension(filePath string) (*LoadedExtension, 
 		}
 	}
 
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID:        newManifest.Name,
 		Manifest:  newManifest,
 		Enabled:   wasEnabled, // Preserve enabled state from before upgrade
@@ -812,7 +812,7 @@ type ExtensionUpgradeInfo struct {
 	IsInstalled    bool   `json:"is_installed"`
 }
 
-func (m *ExtensionManager) checkExtensionUpgradeInternal(filePath string) (*ExtensionUpgradeInfo, error) {
+func (m *extensionManager) checkExtensionUpgradeInternal(filePath string) (*ExtensionUpgradeInfo, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".spotiflac-ext") {
 		return nil, fmt.Errorf("Invalid file format. Please select a .spotiflac-ext file")
 	}
@@ -871,7 +871,7 @@ func (m *ExtensionManager) checkExtensionUpgradeInternal(filePath string) (*Exte
 	return info, nil
 }
 
-func (m *ExtensionManager) CheckExtensionUpgradeJSON(filePath string) (string, error) {
+func (m *extensionManager) CheckExtensionUpgradeJSON(filePath string) (string, error) {
 	info, err := m.checkExtensionUpgradeInternal(filePath)
 	if err != nil {
 		return "", err
@@ -885,7 +885,7 @@ func (m *ExtensionManager) CheckExtensionUpgradeJSON(filePath string) (string, e
 	return string(jsonBytes), nil
 }
 
-func (m *ExtensionManager) GetInstalledExtensionsJSON() (string, error) {
+func (m *extensionManager) GetInstalledExtensionsJSON() (string, error) {
 	extensions := m.GetAllExtensions()
 
 	type ExtensionInfo struct {
@@ -982,7 +982,7 @@ func (m *ExtensionManager) GetInstalledExtensionsJSON() (string, error) {
 	return string(jsonBytes), nil
 }
 
-func (m *ExtensionManager) InitializeExtension(extensionID string, settings map[string]interface{}) error {
+func (m *extensionManager) InitializeExtension(extensionID string, settings map[string]interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1000,7 +1000,7 @@ func (m *ExtensionManager) InitializeExtension(extensionID string, settings map[
 	return initializeExtensionWithSettingsLocked(ext, settings)
 }
 
-func (m *ExtensionManager) CleanupExtension(extensionID string) error {
+func (m *extensionManager) CleanupExtension(extensionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1022,7 +1022,7 @@ func (m *ExtensionManager) CleanupExtension(extensionID string) error {
 	return nil
 }
 
-func (m *ExtensionManager) UnloadAllExtensions() {
+func (m *extensionManager) UnloadAllExtensions() {
 	m.mu.Lock()
 	extensionIDs := make([]string, 0, len(m.extensions))
 	for id := range m.extensions {
@@ -1037,7 +1037,7 @@ func (m *ExtensionManager) UnloadAllExtensions() {
 	GoLog("[Extension] All extensions unloaded\n")
 }
 
-func (m *ExtensionManager) InvokeAction(extensionID string, actionName string) (map[string]interface{}, error) {
+func (m *extensionManager) InvokeAction(extensionID string, actionName string) (map[string]interface{}, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

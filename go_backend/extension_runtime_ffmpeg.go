@@ -50,7 +50,7 @@ func ClearFFmpegCommand(commandID string) {
 	delete(ffmpegCommands, commandID)
 }
 
-func (r *ExtensionRuntime) ffmpegExecute(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) ffmpegExecute(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -107,7 +107,7 @@ func (r *ExtensionRuntime) ffmpegExecute(call goja.FunctionCall) goja.Value {
 	}
 }
 
-func (r *ExtensionRuntime) ffmpegGetInfo(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) ffmpegGetInfo(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -134,7 +134,7 @@ func (r *ExtensionRuntime) ffmpegGetInfo(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) ffmpegConvert(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) ffmpegConvert(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,

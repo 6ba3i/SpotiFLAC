@@ -21,7 +21,7 @@ const (
 	storageFlushRetryDelay   = 2 * time.Second
 )
 
-func (r *ExtensionRuntime) getStoragePath() string {
+func (r *extensionRuntime) getStoragePath() string {
 	return filepath.Join(r.dataDir, "storage.json")
 }
 
@@ -36,7 +36,7 @@ func cloneInterfaceMap(src map[string]interface{}) map[string]interface{} {
 	return dst
 }
 
-func (r *ExtensionRuntime) ensureStorageLoaded() error {
+func (r *extensionRuntime) ensureStorageLoaded() error {
 	r.storageMu.RLock()
 	if r.storageLoaded {
 		r.storageMu.RUnlock()
@@ -74,7 +74,7 @@ func (r *ExtensionRuntime) ensureStorageLoaded() error {
 	return nil
 }
 
-func (r *ExtensionRuntime) loadStorage() (map[string]interface{}, error) {
+func (r *extensionRuntime) loadStorage() (map[string]interface{}, error) {
 	if err := r.ensureStorageLoaded(); err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (r *ExtensionRuntime) loadStorage() (map[string]interface{}, error) {
 	return cloneInterfaceMap(r.storageCache), nil
 }
 
-func (r *ExtensionRuntime) queueStorageFlushLocked(delay time.Duration) {
+func (r *extensionRuntime) queueStorageFlushLocked(delay time.Duration) {
 	if r.storageClosed {
 		return
 	}
@@ -94,7 +94,7 @@ func (r *ExtensionRuntime) queueStorageFlushLocked(delay time.Duration) {
 	r.storageTimer = time.AfterFunc(delay, r.flushStorageDirtyAsync)
 }
 
-func (r *ExtensionRuntime) persistStorageSnapshot(storage map[string]interface{}) error {
+func (r *extensionRuntime) persistStorageSnapshot(storage map[string]interface{}) error {
 	data, err := json.Marshal(storage)
 	if err != nil {
 		return err
@@ -106,13 +106,13 @@ func (r *ExtensionRuntime) persistStorageSnapshot(storage map[string]interface{}
 	return os.WriteFile(r.getStoragePath(), data, 0600)
 }
 
-func (r *ExtensionRuntime) flushStorageDirtyAsync() {
+func (r *extensionRuntime) flushStorageDirtyAsync() {
 	if err := r.flushStorageDirty(); err != nil {
 		GoLog("[Extension:%s] Storage flush error: %v\n", r.extensionID, err)
 	}
 }
 
-func (r *ExtensionRuntime) flushStorageDirty() error {
+func (r *extensionRuntime) flushStorageDirty() error {
 	r.storageMu.Lock()
 	if r.storageClosed {
 		r.storageTimer = nil
@@ -140,7 +140,7 @@ func (r *ExtensionRuntime) flushStorageDirty() error {
 	return nil
 }
 
-func (r *ExtensionRuntime) flushStorageNow() error {
+func (r *extensionRuntime) flushStorageNow() error {
 	r.storageMu.Lock()
 	if r.storageTimer != nil {
 		r.storageTimer.Stop()
@@ -157,7 +157,7 @@ func (r *ExtensionRuntime) flushStorageNow() error {
 	return r.persistStorageSnapshot(snapshot)
 }
 
-func (r *ExtensionRuntime) closeStorageFlusher() {
+func (r *extensionRuntime) closeStorageFlusher() {
 	r.storageMu.Lock()
 	r.storageClosed = true
 	r.storageDirty = false
@@ -168,7 +168,7 @@ func (r *ExtensionRuntime) closeStorageFlusher() {
 	r.storageMu.Unlock()
 }
 
-func (r *ExtensionRuntime) storageGet(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) storageGet(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return goja.Undefined()
 	}
@@ -193,7 +193,7 @@ func (r *ExtensionRuntime) storageGet(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(value)
 }
 
-func (r *ExtensionRuntime) storageSet(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) storageSet(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(false)
 	}
@@ -225,7 +225,7 @@ func (r *ExtensionRuntime) storageSet(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(true)
 }
 
-func (r *ExtensionRuntime) storageRemove(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) storageRemove(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(false)
 	}
@@ -254,15 +254,15 @@ func (r *ExtensionRuntime) storageRemove(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(true)
 }
 
-func (r *ExtensionRuntime) getCredentialsPath() string {
+func (r *extensionRuntime) getCredentialsPath() string {
 	return filepath.Join(r.dataDir, ".credentials.enc")
 }
 
-func (r *ExtensionRuntime) getSaltPath() string {
+func (r *extensionRuntime) getSaltPath() string {
 	return filepath.Join(r.dataDir, ".cred_salt")
 }
 
-func (r *ExtensionRuntime) getOrCreateSalt() ([]byte, error) {
+func (r *extensionRuntime) getOrCreateSalt() ([]byte, error) {
 	saltPath := r.getSaltPath()
 
 	salt, err := os.ReadFile(saltPath)
@@ -282,7 +282,7 @@ func (r *ExtensionRuntime) getOrCreateSalt() ([]byte, error) {
 	return salt, nil
 }
 
-func (r *ExtensionRuntime) getEncryptionKey() ([]byte, error) {
+func (r *extensionRuntime) getEncryptionKey() ([]byte, error) {
 	salt, err := r.getOrCreateSalt()
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (r *ExtensionRuntime) getEncryptionKey() ([]byte, error) {
 	return hash[:], nil
 }
 
-func (r *ExtensionRuntime) ensureCredentialsLoaded() error {
+func (r *extensionRuntime) ensureCredentialsLoaded() error {
 	r.credentialsMu.RLock()
 	if r.credentialsLoaded {
 		r.credentialsMu.RUnlock()
@@ -340,7 +340,7 @@ func (r *ExtensionRuntime) ensureCredentialsLoaded() error {
 	return nil
 }
 
-func (r *ExtensionRuntime) loadCredentials() (map[string]interface{}, error) {
+func (r *extensionRuntime) loadCredentials() (map[string]interface{}, error) {
 	if err := r.ensureCredentialsLoaded(); err != nil {
 		return nil, err
 	}
@@ -350,7 +350,7 @@ func (r *ExtensionRuntime) loadCredentials() (map[string]interface{}, error) {
 	return cloneInterfaceMap(r.credentialsCache), nil
 }
 
-func (r *ExtensionRuntime) saveCredentials(creds map[string]interface{}) error {
+func (r *extensionRuntime) saveCredentials(creds map[string]interface{}) error {
 	data, err := json.Marshal(creds)
 	if err != nil {
 		return err
@@ -377,7 +377,7 @@ func (r *ExtensionRuntime) saveCredentials(creds map[string]interface{}) error {
 	return nil
 }
 
-func (r *ExtensionRuntime) credentialsStore(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) credentialsStore(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -414,7 +414,7 @@ func (r *ExtensionRuntime) credentialsStore(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) credentialsGet(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) credentialsGet(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return goja.Undefined()
 	}
@@ -439,7 +439,7 @@ func (r *ExtensionRuntime) credentialsGet(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(value)
 }
 
-func (r *ExtensionRuntime) credentialsRemove(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) credentialsRemove(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(false)
 	}
@@ -464,7 +464,7 @@ func (r *ExtensionRuntime) credentialsRemove(call goja.FunctionCall) goja.Value 
 	return r.vm.ToValue(true)
 }
 
-func (r *ExtensionRuntime) credentialsHas(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) credentialsHas(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(false)
 	}

@@ -80,7 +80,7 @@ func SetExtensionTokens(extensionID string, accessToken, refreshToken string, ex
 	state.IsAuthenticated = accessToken != ""
 }
 
-type ExtensionRuntime struct {
+type extensionRuntime struct {
 	extensionID    string
 	manifest       *ExtensionManifest
 	settings       map[string]interface{}
@@ -123,10 +123,10 @@ var (
 	privateIPCacheMu sync.RWMutex
 )
 
-func NewExtensionRuntime(ext *LoadedExtension) *ExtensionRuntime {
+func newExtensionRuntime(ext *loadedExtension) *extensionRuntime {
 	jar, _ := newSimpleCookieJar()
 
-	runtime := &ExtensionRuntime{
+	runtime := &extensionRuntime{
 		extensionID:       ext.ID,
 		manifest:          ext.Manifest,
 		settings:          make(map[string]interface{}),
@@ -142,25 +142,25 @@ func NewExtensionRuntime(ext *LoadedExtension) *ExtensionRuntime {
 	return runtime
 }
 
-func (r *ExtensionRuntime) setActiveDownloadItemID(itemID string) {
+func (r *extensionRuntime) setActiveDownloadItemID(itemID string) {
 	r.activeDownloadMu.Lock()
 	defer r.activeDownloadMu.Unlock()
 	r.activeDownloadItemID = strings.TrimSpace(itemID)
 }
 
-func (r *ExtensionRuntime) clearActiveDownloadItemID() {
+func (r *extensionRuntime) clearActiveDownloadItemID() {
 	r.activeDownloadMu.Lock()
 	defer r.activeDownloadMu.Unlock()
 	r.activeDownloadItemID = ""
 }
 
-func (r *ExtensionRuntime) getActiveDownloadItemID() string {
+func (r *extensionRuntime) getActiveDownloadItemID() string {
 	r.activeDownloadMu.RLock()
 	defer r.activeDownloadMu.RUnlock()
 	return r.activeDownloadItemID
 }
 
-func newExtensionHTTPClient(ext *LoadedExtension, jar http.CookieJar, timeout time.Duration) *http.Client {
+func newExtensionHTTPClient(ext *loadedExtension, jar http.CookieJar, timeout time.Duration) *http.Client {
 	// Extension sandbox enforces HTTPS-only domains. Do not apply global
 	// allow_http scheme downgrade here, because some extension APIs (e.g.
 	// spotify-web) will redirect http -> https and can end up in 301 loops.
@@ -329,11 +329,11 @@ func (j *simpleCookieJar) Cookies(u *url.URL) []*http.Cookie {
 	return j.cookies[u.Host]
 }
 
-func (r *ExtensionRuntime) SetSettings(settings map[string]interface{}) {
+func (r *extensionRuntime) SetSettings(settings map[string]interface{}) {
 	r.settings = settings
 }
 
-func (r *ExtensionRuntime) RegisterAPIs(vm *goja.Runtime) {
+func (r *extensionRuntime) RegisterAPIs(vm *goja.Runtime) {
 	r.vm = vm
 
 	httpObj := vm.NewObject()

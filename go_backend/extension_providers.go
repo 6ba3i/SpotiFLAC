@@ -116,19 +116,19 @@ type ExtDownloadResult struct {
 	DecryptionKey string `json:"decryption_key,omitempty"`
 }
 
-type ExtensionProviderWrapper struct {
-	extension *LoadedExtension
+type extensionProviderWrapper struct {
+	extension *loadedExtension
 	vm        *goja.Runtime
 }
 
-func NewExtensionProviderWrapper(ext *LoadedExtension) *ExtensionProviderWrapper {
-	return &ExtensionProviderWrapper{
+func newExtensionProviderWrapper(ext *loadedExtension) *extensionProviderWrapper {
+	return &extensionProviderWrapper{
 		extension: ext,
 		vm:        ext.VM,
 	}
 }
 
-func (p *ExtensionProviderWrapper) lockReadyVM() error {
+func (p *extensionProviderWrapper) lockReadyVM() error {
 	vm, err := p.extension.lockReadyVM()
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (p *ExtensionProviderWrapper) lockReadyVM() error {
 	return nil
 }
 
-func (p *ExtensionProviderWrapper) SearchTracks(query string, limit int) (*ExtSearchResult, error) {
+func (p *extensionProviderWrapper) SearchTracks(query string, limit int) (*ExtSearchResult, error) {
 	if !p.extension.Manifest.IsMetadataProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a metadata provider", p.extension.ID)
 	}
@@ -197,7 +197,7 @@ func (p *ExtensionProviderWrapper) SearchTracks(query string, limit int) (*ExtSe
 	return &searchResult, nil
 }
 
-func (p *ExtensionProviderWrapper) GetTrack(trackID string) (*ExtTrackMetadata, error) {
+func (p *extensionProviderWrapper) GetTrack(trackID string) (*ExtTrackMetadata, error) {
 	if !p.extension.Manifest.IsMetadataProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a metadata provider", p.extension.ID)
 	}
@@ -246,7 +246,7 @@ func (p *ExtensionProviderWrapper) GetTrack(trackID string) (*ExtTrackMetadata, 
 	return &track, nil
 }
 
-func (p *ExtensionProviderWrapper) GetAlbum(albumID string) (*ExtAlbumMetadata, error) {
+func (p *extensionProviderWrapper) GetAlbum(albumID string) (*ExtAlbumMetadata, error) {
 	if !p.extension.Manifest.IsMetadataProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a metadata provider", p.extension.ID)
 	}
@@ -298,7 +298,7 @@ func (p *ExtensionProviderWrapper) GetAlbum(albumID string) (*ExtAlbumMetadata, 
 	return &album, nil
 }
 
-func (p *ExtensionProviderWrapper) GetArtist(artistID string) (*ExtArtistMetadata, error) {
+func (p *extensionProviderWrapper) GetArtist(artistID string) (*ExtArtistMetadata, error) {
 	if !p.extension.Manifest.IsMetadataProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a metadata provider", p.extension.ID)
 	}
@@ -353,7 +353,7 @@ func (p *ExtensionProviderWrapper) GetArtist(artistID string) (*ExtArtistMetadat
 	return &artist, nil
 }
 
-func (p *ExtensionProviderWrapper) EnrichTrack(track *ExtTrackMetadata) (*ExtTrackMetadata, error) {
+func (p *extensionProviderWrapper) EnrichTrack(track *ExtTrackMetadata) (*ExtTrackMetadata, error) {
 	if !p.extension.Manifest.IsMetadataProvider() {
 		return track, nil
 	}
@@ -415,7 +415,7 @@ func (p *ExtensionProviderWrapper) EnrichTrack(track *ExtTrackMetadata) (*ExtTra
 	return &enrichedTrack, nil
 }
 
-func (p *ExtensionProviderWrapper) CheckAvailability(isrc, trackName, artistName, spotifyID, deezerID string) (*ExtAvailabilityResult, error) {
+func (p *extensionProviderWrapper) CheckAvailability(isrc, trackName, artistName, spotifyID, deezerID string) (*ExtAvailabilityResult, error) {
 	if !p.extension.Manifest.IsDownloadProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a download provider", p.extension.ID)
 	}
@@ -463,7 +463,7 @@ func (p *ExtensionProviderWrapper) CheckAvailability(isrc, trackName, artistName
 	return &availability, nil
 }
 
-func (p *ExtensionProviderWrapper) GetDownloadURL(trackID, quality string) (*ExtDownloadURLResult, error) {
+func (p *extensionProviderWrapper) GetDownloadURL(trackID, quality string) (*ExtDownloadURLResult, error) {
 	if !p.extension.Manifest.IsDownloadProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a download provider", p.extension.ID)
 	}
@@ -513,7 +513,7 @@ func (p *ExtensionProviderWrapper) GetDownloadURL(trackID, quality string) (*Ext
 
 const ExtDownloadTimeout = DownloadTimeout
 
-func (p *ExtensionProviderWrapper) Download(trackID, quality, outputPath, itemID string, onProgress func(percent int)) (*ExtDownloadResult, error) {
+func (p *extensionProviderWrapper) Download(trackID, quality, outputPath, itemID string, onProgress func(percent int)) (*ExtDownloadResult, error) {
 	if !p.extension.Manifest.IsDownloadProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a download provider", p.extension.ID)
 	}
@@ -604,40 +604,40 @@ func (p *ExtensionProviderWrapper) Download(trackID, quality, outputPath, itemID
 	return &downloadResult, nil
 }
 
-func (m *ExtensionManager) GetMetadataProviders() []*ExtensionProviderWrapper {
+func (m *extensionManager) GetMetadataProviders() []*extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var providers []*ExtensionProviderWrapper
+	var providers []*extensionProviderWrapper
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.IsMetadataProvider() && ext.Error == "" {
-			providers = append(providers, NewExtensionProviderWrapper(ext))
+			providers = append(providers, newExtensionProviderWrapper(ext))
 		}
 	}
 	return providers
 }
 
-func (m *ExtensionManager) GetDownloadProviders() []*ExtensionProviderWrapper {
+func (m *extensionManager) GetDownloadProviders() []*extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var providers []*ExtensionProviderWrapper
+	var providers []*extensionProviderWrapper
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.IsDownloadProvider() && ext.Error == "" {
-			providers = append(providers, NewExtensionProviderWrapper(ext))
+			providers = append(providers, newExtensionProviderWrapper(ext))
 		}
 	}
 	return providers
 }
 
-func (m *ExtensionManager) SearchTracksWithExtensions(query string, limit int) ([]ExtTrackMetadata, error) {
+func (m *extensionManager) SearchTracksWithExtensions(query string, limit int) ([]ExtTrackMetadata, error) {
 	providers := m.GetMetadataProviders()
 	if len(providers) == 0 {
 		return nil, nil
 	}
 
-	providerByID := make(map[string]*ExtensionProviderWrapper, len(providers))
-	orderedProviders := make([]*ExtensionProviderWrapper, 0, len(providers))
+	providerByID := make(map[string]*extensionProviderWrapper, len(providers))
+	orderedProviders := make([]*extensionProviderWrapper, 0, len(providers))
 	for _, provider := range providers {
 		providerByID[provider.extension.ID] = provider
 	}
@@ -830,13 +830,13 @@ func searchBuiltInMetadataTracks(providerID, query string, limit int) ([]ExtTrac
 	}
 }
 
-func (m *ExtensionManager) SearchTracksWithMetadataProviders(query string, limit int, includeExtensions bool) ([]ExtTrackMetadata, error) {
+func (m *extensionManager) SearchTracksWithMetadataProviders(query string, limit int, includeExtensions bool) ([]ExtTrackMetadata, error) {
 	priority := GetMetadataProviderPriority()
 	if limit <= 0 {
 		limit = 20
 	}
 
-	extensionProviders := make(map[string]*ExtensionProviderWrapper)
+	extensionProviders := make(map[string]*extensionProviderWrapper)
 	if includeExtensions {
 		for _, provider := range m.GetMetadataProviders() {
 			extensionProviders[provider.extension.ID] = provider
@@ -916,7 +916,7 @@ func (m *ExtensionManager) SearchTracksWithMetadataProviders(query string, limit
 
 func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, error) {
 	priority := GetProviderPriority()
-	extManager := GetExtensionManager()
+	extManager := getExtensionManager()
 	strictMode := !req.UseFallback
 	selectedProvider := strings.TrimSpace(req.Service)
 
@@ -971,7 +971,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 		if err == nil && ext.Enabled && ext.Error == "" && ext.Manifest.IsMetadataProvider() {
 			GoLog("[DownloadWithExtensionFallback] Enriching track from extension '%s'...\n", req.Source)
 
-			provider := NewExtensionProviderWrapper(ext)
+			provider := newExtensionProviderWrapper(ext)
 			trackMeta := &ExtTrackMetadata{
 				ID:          req.SpotifyID,
 				Name:        req.TrackName,
@@ -1155,7 +1155,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 		if err == nil && ext.Enabled && ext.Error == "" && ext.Manifest.IsDownloadProvider() {
 			skipBuiltIn = ext.Manifest.SkipBuiltInFallback
 
-			provider := NewExtensionProviderWrapper(ext)
+			provider := newExtensionProviderWrapper(ext)
 
 			trackID := req.SpotifyID
 
@@ -1376,7 +1376,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				continue
 			}
 
-			provider := NewExtensionProviderWrapper(ext)
+			provider := newExtensionProviderWrapper(ext)
 
 			availability, err := provider.CheckAvailability(req.ISRC, req.TrackName, req.ArtistName, req.SpotifyID, req.DeezerID)
 			if err != nil || !availability.Available {
@@ -1657,7 +1657,7 @@ func buildOutputPath(req DownloadRequest) string {
 	return filepath.Join(outputDir, filename+ext)
 }
 
-func buildOutputPathForExtension(req DownloadRequest, ext *LoadedExtension) string {
+func buildOutputPathForExtension(req DownloadRequest, ext *loadedExtension) string {
 	if strings.TrimSpace(req.OutputPath) != "" {
 		return strings.TrimSpace(req.OutputPath)
 	}
@@ -1703,7 +1703,7 @@ func buildOutputPathForExtension(req DownloadRequest, ext *LoadedExtension) stri
 	return filepath.Join(tempDir, filename+outputExt)
 }
 
-func (p *ExtensionProviderWrapper) CustomSearch(query string, options map[string]interface{}) ([]ExtTrackMetadata, error) {
+func (p *extensionProviderWrapper) CustomSearch(query string, options map[string]interface{}) ([]ExtTrackMetadata, error) {
 	if !p.extension.Manifest.HasCustomSearch() {
 		return nil, fmt.Errorf("extension '%s' does not support custom search", p.extension.ID)
 	}
@@ -1785,7 +1785,7 @@ type ExtURLHandleResult struct {
 	CoverURL string             `json:"cover_url,omitempty"`
 }
 
-func (p *ExtensionProviderWrapper) HandleURL(url string) (*ExtURLHandleResult, error) {
+func (p *extensionProviderWrapper) HandleURL(url string) (*ExtURLHandleResult, error) {
 	if !p.extension.Manifest.HasURLHandler() {
 		return nil, fmt.Errorf("extension '%s' does not support URL handling", p.extension.ID)
 	}
@@ -1871,7 +1871,7 @@ type MatchTrackResult struct {
 	Reason     string  `json:"reason,omitempty"`
 }
 
-func (p *ExtensionProviderWrapper) MatchTrack(sourceTrack map[string]interface{}, candidates []map[string]interface{}) (*MatchTrackResult, error) {
+func (p *extensionProviderWrapper) MatchTrack(sourceTrack map[string]interface{}, candidates []map[string]interface{}) (*MatchTrackResult, error) {
 	if !p.extension.Manifest.HasCustomMatching() {
 		return nil, fmt.Errorf("extension '%s' does not support custom matching", p.extension.ID)
 	}
@@ -1942,7 +1942,7 @@ type PostProcessInput struct {
 
 const PostProcessTimeout = 2 * time.Minute
 
-func (p *ExtensionProviderWrapper) PostProcess(filePath string, metadata map[string]interface{}, hookID string) (*PostProcessResult, error) {
+func (p *extensionProviderWrapper) PostProcess(filePath string, metadata map[string]interface{}, hookID string) (*PostProcessResult, error) {
 	if !p.extension.Manifest.HasPostProcessing() {
 		return nil, fmt.Errorf("extension '%s' does not support post-processing", p.extension.ID)
 	}
@@ -2005,7 +2005,7 @@ func (p *ExtensionProviderWrapper) PostProcess(filePath string, metadata map[str
 	return &postResult, nil
 }
 
-func (p *ExtensionProviderWrapper) PostProcessV2(input PostProcessInput, metadata map[string]interface{}, hookID string) (*PostProcessResult, error) {
+func (p *extensionProviderWrapper) PostProcessV2(input PostProcessInput, metadata map[string]interface{}, hookID string) (*PostProcessResult, error) {
 	if !p.extension.Manifest.HasPostProcessing() {
 		return nil, fmt.Errorf("extension '%s' does not support post-processing", p.extension.ID)
 	}
@@ -2075,39 +2075,39 @@ func (p *ExtensionProviderWrapper) PostProcessV2(input PostProcessInput, metadat
 	return &postResult, nil
 }
 
-func (m *ExtensionManager) GetSearchProviders() []*ExtensionProviderWrapper {
+func (m *extensionManager) GetSearchProviders() []*extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var providers []*ExtensionProviderWrapper
+	var providers []*extensionProviderWrapper
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.HasCustomSearch() && ext.Error == "" {
-			providers = append(providers, NewExtensionProviderWrapper(ext))
+			providers = append(providers, newExtensionProviderWrapper(ext))
 		}
 	}
 	return providers
 }
 
-func (m *ExtensionManager) GetURLHandlers() []*ExtensionProviderWrapper {
+func (m *extensionManager) GetURLHandlers() []*extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var providers []*ExtensionProviderWrapper
+	var providers []*extensionProviderWrapper
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.HasURLHandler() && ext.Error == "" {
-			providers = append(providers, NewExtensionProviderWrapper(ext))
+			providers = append(providers, newExtensionProviderWrapper(ext))
 		}
 	}
 	return providers
 }
 
-func (m *ExtensionManager) FindURLHandler(url string) *ExtensionProviderWrapper {
+func (m *extensionManager) FindURLHandler(url string) *extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.MatchesURL(url) && ext.Error == "" {
-			return NewExtensionProviderWrapper(ext)
+			return newExtensionProviderWrapper(ext)
 		}
 	}
 	return nil
@@ -2118,7 +2118,7 @@ type ExtURLHandleResultWithExtID struct {
 	ExtensionID string
 }
 
-func (m *ExtensionManager) HandleURLWithExtension(url string) (*ExtURLHandleResultWithExtID, error) {
+func (m *extensionManager) HandleURLWithExtension(url string) (*ExtURLHandleResultWithExtID, error) {
 	handler := m.FindURLHandler(url)
 	if handler == nil {
 		return nil, fmt.Errorf("no extension found to handle URL: %s", url)
@@ -2138,20 +2138,20 @@ func (m *ExtensionManager) HandleURLWithExtension(url string) (*ExtURLHandleResu
 	}, nil
 }
 
-func (m *ExtensionManager) GetPostProcessingProviders() []*ExtensionProviderWrapper {
+func (m *extensionManager) GetPostProcessingProviders() []*extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var providers []*ExtensionProviderWrapper
+	var providers []*extensionProviderWrapper
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.HasPostProcessing() && ext.Error == "" {
-			providers = append(providers, NewExtensionProviderWrapper(ext))
+			providers = append(providers, newExtensionProviderWrapper(ext))
 		}
 	}
 	return providers
 }
 
-func (m *ExtensionManager) RunPostProcessing(filePath string, metadata map[string]interface{}) (*PostProcessResult, error) {
+func (m *extensionManager) RunPostProcessing(filePath string, metadata map[string]interface{}) (*PostProcessResult, error) {
 	providers := m.GetPostProcessingProviders()
 	if len(providers) == 0 {
 		return &PostProcessResult{Success: true, NewFilePath: filePath}, nil
@@ -2196,7 +2196,7 @@ func (m *ExtensionManager) RunPostProcessing(filePath string, metadata map[strin
 	return &PostProcessResult{Success: true, NewFilePath: currentPath}, nil
 }
 
-func (m *ExtensionManager) RunPostProcessingV2(input PostProcessInput, metadata map[string]interface{}) (*PostProcessResult, error) {
+func (m *extensionManager) RunPostProcessingV2(input PostProcessInput, metadata map[string]interface{}) (*PostProcessResult, error) {
 	providers := m.GetPostProcessingProviders()
 	if len(providers) == 0 {
 		return &PostProcessResult{Success: true, NewFilePath: input.Path, NewFileURI: input.URI}, nil
@@ -2264,7 +2264,7 @@ type ExtLyricsLine struct {
 	EndTimeMs   int64  `json:"endTimeMs"`
 }
 
-func (p *ExtensionProviderWrapper) FetchLyrics(trackName, artistName, albumName string, durationSec float64) (*LyricsResponse, error) {
+func (p *extensionProviderWrapper) FetchLyrics(trackName, artistName, albumName string, durationSec float64) (*LyricsResponse, error) {
 	if !p.extension.Manifest.IsLyricsProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a lyrics provider", p.extension.ID)
 	}
@@ -2362,14 +2362,14 @@ func (p *ExtensionProviderWrapper) FetchLyrics(trackName, artistName, albumName 
 	return response, nil
 }
 
-func (m *ExtensionManager) GetLyricsProviders() []*ExtensionProviderWrapper {
+func (m *extensionManager) GetLyricsProviders() []*extensionProviderWrapper {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var providers []*ExtensionProviderWrapper
+	var providers []*extensionProviderWrapper
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.IsLyricsProvider() && ext.Error == "" {
-			providers = append(providers, NewExtensionProviderWrapper(ext))
+			providers = append(providers, newExtensionProviderWrapper(ext))
 		}
 	}
 

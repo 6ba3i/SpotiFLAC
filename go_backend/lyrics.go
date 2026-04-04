@@ -385,8 +385,8 @@ func (c *LyricsClient) FetchLyricsAllSources(spotifyID, trackName, artistName st
 	primaryArtist := normalizeArtistName(artistName)
 	fetchOptions := GetLyricsFetchOptions()
 
-	extManager := GetExtensionManager()
-	var extensionProviders []*ExtensionProviderWrapper
+	extManager := getExtensionManager()
+	var extensionProviders []*extensionProviderWrapper
 	if extManager != nil {
 		extensionProviders = extManager.GetLyricsProviders()
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-func setStorageValue(t *testing.T, runtime *ExtensionRuntime, key string, value interface{}) {
+func setStorageValue(t *testing.T, runtime *extensionRuntime, key string, value interface{}) {
 	t.Helper()
 	result := runtime.storageSet(goja.FunctionCall{
 		Arguments: []goja.Value{
@@ -39,7 +39,7 @@ func readStorageMap(t *testing.T, storagePath string) map[string]interface{} {
 }
 
 func TestExtensionRuntimeStorage_DebouncedWriteCompactJSON(t *testing.T) {
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID: "storage-test",
 		Manifest: &ExtensionManifest{
 			Name: "storage-test",
@@ -47,7 +47,7 @@ func TestExtensionRuntimeStorage_DebouncedWriteCompactJSON(t *testing.T) {
 		DataDir: t.TempDir(),
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 	runtime.storageFlushDelay = 25 * time.Millisecond
 	runtime.RegisterAPIs(goja.New())
 
@@ -86,7 +86,7 @@ func TestExtensionRuntimeStorage_DebouncedWriteCompactJSON(t *testing.T) {
 }
 
 func TestUnloadExtension_FlushesPendingStorage(t *testing.T) {
-	ext := &LoadedExtension{
+	ext := &loadedExtension{
 		ID: "unload-storage-test",
 		Manifest: &ExtensionManifest{
 			Name: "unload-storage-test",
@@ -95,13 +95,13 @@ func TestUnloadExtension_FlushesPendingStorage(t *testing.T) {
 		VM:      goja.New(),
 	}
 
-	runtime := NewExtensionRuntime(ext)
+	runtime := newExtensionRuntime(ext)
 	runtime.storageFlushDelay = time.Hour
 	runtime.RegisterAPIs(ext.VM)
 	ext.runtime = runtime
 
-	manager := &ExtensionManager{
-		extensions: map[string]*LoadedExtension{
+	manager := &extensionManager{
+		extensions: map[string]*loadedExtension{
 			ext.ID: ext,
 		},
 	}

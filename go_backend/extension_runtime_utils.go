@@ -16,7 +16,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-func (r *ExtensionRuntime) base64Encode(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) base64Encode(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -24,7 +24,7 @@ func (r *ExtensionRuntime) base64Encode(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(base64.StdEncoding.EncodeToString([]byte(input)))
 }
 
-func (r *ExtensionRuntime) base64Decode(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) base64Decode(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -36,7 +36,7 @@ func (r *ExtensionRuntime) base64Decode(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(string(decoded))
 }
 
-func (r *ExtensionRuntime) md5Hash(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) md5Hash(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -45,7 +45,7 @@ func (r *ExtensionRuntime) md5Hash(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(hex.EncodeToString(hash[:]))
 }
 
-func (r *ExtensionRuntime) sha256Hash(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) sha256Hash(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -54,7 +54,7 @@ func (r *ExtensionRuntime) sha256Hash(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(hex.EncodeToString(hash[:]))
 }
 
-func (r *ExtensionRuntime) hmacSHA256(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) hmacSHA256(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue("")
 	}
@@ -66,7 +66,7 @@ func (r *ExtensionRuntime) hmacSHA256(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(hex.EncodeToString(mac.Sum(nil)))
 }
 
-func (r *ExtensionRuntime) hmacSHA256Base64(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) hmacSHA256Base64(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue("")
 	}
@@ -78,7 +78,7 @@ func (r *ExtensionRuntime) hmacSHA256Base64(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(base64.StdEncoding.EncodeToString(mac.Sum(nil)))
 }
 
-func (r *ExtensionRuntime) hmacSHA1(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) hmacSHA1(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue([]byte{})
 	}
@@ -130,7 +130,7 @@ func (r *ExtensionRuntime) hmacSHA1(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(jsArray)
 }
 
-func (r *ExtensionRuntime) parseJSON(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) parseJSON(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return goja.Undefined()
 	}
@@ -145,7 +145,7 @@ func (r *ExtensionRuntime) parseJSON(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(result)
 }
 
-func (r *ExtensionRuntime) stringifyJSON(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) stringifyJSON(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -160,7 +160,7 @@ func (r *ExtensionRuntime) stringifyJSON(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(string(data))
 }
 
-func (r *ExtensionRuntime) cryptoEncrypt(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) cryptoEncrypt(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -187,7 +187,7 @@ func (r *ExtensionRuntime) cryptoEncrypt(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) cryptoDecrypt(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) cryptoDecrypt(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -222,7 +222,7 @@ func (r *ExtensionRuntime) cryptoDecrypt(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) cryptoGenerateKey(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) cryptoGenerateKey(call goja.FunctionCall) goja.Value {
 	length := 32
 	if len(call.Arguments) > 0 && !goja.IsUndefined(call.Arguments[0]) {
 		if l, ok := call.Arguments[0].Export().(float64); ok {
@@ -245,35 +245,35 @@ func (r *ExtensionRuntime) cryptoGenerateKey(call goja.FunctionCall) goja.Value 
 	})
 }
 
-func (r *ExtensionRuntime) randomUserAgent(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) randomUserAgent(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(getRandomUserAgent())
 }
 
-func (r *ExtensionRuntime) logDebug(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) logDebug(call goja.FunctionCall) goja.Value {
 	msg := r.formatLogArgs(call.Arguments)
 	GoLog("[Extension:%s:DEBUG] %s\n", r.extensionID, msg)
 	return goja.Undefined()
 }
 
-func (r *ExtensionRuntime) logInfo(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) logInfo(call goja.FunctionCall) goja.Value {
 	msg := r.formatLogArgs(call.Arguments)
 	GoLog("[Extension:%s:INFO] %s\n", r.extensionID, msg)
 	return goja.Undefined()
 }
 
-func (r *ExtensionRuntime) logWarn(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) logWarn(call goja.FunctionCall) goja.Value {
 	msg := r.formatLogArgs(call.Arguments)
 	GoLog("[Extension:%s:WARN] %s\n", r.extensionID, msg)
 	return goja.Undefined()
 }
 
-func (r *ExtensionRuntime) logError(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) logError(call goja.FunctionCall) goja.Value {
 	msg := r.formatLogArgs(call.Arguments)
 	GoLog("[Extension:%s:ERROR] %s\n", r.extensionID, msg)
 	return goja.Undefined()
 }
 
-func (r *ExtensionRuntime) formatLogArgs(args []goja.Value) string {
+func (r *extensionRuntime) formatLogArgs(args []goja.Value) string {
 	parts := make([]string, len(args))
 	for i, arg := range args {
 		parts[i] = fmt.Sprintf("%v", arg.Export())
@@ -281,7 +281,7 @@ func (r *ExtensionRuntime) formatLogArgs(args []goja.Value) string {
 	return strings.Join(parts, " ")
 }
 
-func (r *ExtensionRuntime) sanitizeFilenameWrapper(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) sanitizeFilenameWrapper(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}
@@ -289,7 +289,7 @@ func (r *ExtensionRuntime) sanitizeFilenameWrapper(call goja.FunctionCall) goja.
 	return r.vm.ToValue(sanitizeFilename(input))
 }
 
-func (r *ExtensionRuntime) RegisterGoBackendAPIs(vm *goja.Runtime) {
+func (r *extensionRuntime) RegisterGoBackendAPIs(vm *goja.Runtime) {
 	gobackendObj := vm.Get("gobackend")
 	if gobackendObj == nil || goja.IsUndefined(gobackendObj) {
 		gobackendObj = vm.NewObject()

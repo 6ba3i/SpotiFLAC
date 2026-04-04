@@ -71,7 +71,7 @@ func isPathWithinBase(baseDir, targetPath string) bool {
 	return true
 }
 
-func (r *ExtensionRuntime) validatePath(path string) (string, error) {
+func (r *extensionRuntime) validatePath(path string) (string, error) {
 	if !r.manifest.Permissions.File {
 		return "", fmt.Errorf("file access denied: extension does not have 'file' permission")
 	}
@@ -106,7 +106,7 @@ func (r *ExtensionRuntime) validatePath(path string) (string, error) {
 	return absPath, nil
 }
 
-func (r *ExtensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -271,7 +271,7 @@ func (r *ExtensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) fileExists(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileExists(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(false)
 	}
@@ -286,7 +286,7 @@ func (r *ExtensionRuntime) fileExists(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(err == nil)
 }
 
-func (r *ExtensionRuntime) fileDelete(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileDelete(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -315,7 +315,7 @@ func (r *ExtensionRuntime) fileDelete(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) fileRead(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileRead(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -346,7 +346,7 @@ func (r *ExtensionRuntime) fileRead(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) fileWrite(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileWrite(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -386,7 +386,7 @@ func (r *ExtensionRuntime) fileWrite(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) fileCopy(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileCopy(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -459,7 +459,7 @@ func (r *ExtensionRuntime) fileCopy(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) fileMove(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileMove(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,
@@ -507,7 +507,7 @@ func (r *ExtensionRuntime) fileMove(call goja.FunctionCall) goja.Value {
 	})
 }
 
-func (r *ExtensionRuntime) fileGetSize(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) fileGetSize(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue(map[string]interface{}{
 			"success": false,

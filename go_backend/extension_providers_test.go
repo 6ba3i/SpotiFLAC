@@ -51,7 +51,7 @@ func TestSearchTracksWithMetadataProvidersUsesPriorityAndDedupes(t *testing.T) {
 		}
 	}
 
-	manager := GetExtensionManager()
+	manager := getExtensionManager()
 	tracks, err := manager.SearchTracksWithMetadataProviders("query", 3, false)
 	if err != nil {
 		t.Fatalf("SearchTracksWithMetadataProviders returned error: %v", err)

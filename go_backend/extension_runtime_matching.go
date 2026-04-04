@@ -6,7 +6,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-func (r *ExtensionRuntime) matchingCompareStrings(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) matchingCompareStrings(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(0.0)
 	}
@@ -22,7 +22,7 @@ func (r *ExtensionRuntime) matchingCompareStrings(call goja.FunctionCall) goja.V
 	return r.vm.ToValue(similarity)
 }
 
-func (r *ExtensionRuntime) matchingCompareDuration(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) matchingCompareDuration(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		return r.vm.ToValue(false)
 	}
@@ -43,7 +43,7 @@ func (r *ExtensionRuntime) matchingCompareDuration(call goja.FunctionCall) goja.
 	return r.vm.ToValue(diff <= tolerance)
 }
 
-func (r *ExtensionRuntime) matchingNormalizeString(call goja.FunctionCall) goja.Value {
+func (r *extensionRuntime) matchingNormalizeString(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.vm.ToValue("")
 	}

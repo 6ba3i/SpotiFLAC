@@ -1311,27 +1311,37 @@ class FFmpegService {
     cmdBuffer.write('-v error -hide_banner ');
     cmdBuffer.write('-i "$m4aPath" ');
 
-    final hasCover = coverPath != null && await File(coverPath).exists();
+    final normalizedCoverPath = coverPath?.trim();
+    final hasCover =
+        normalizedCoverPath != null &&
+        normalizedCoverPath.isNotEmpty &&
+        await File(normalizedCoverPath).exists();
     if (hasCover) {
-      cmdBuffer.write('-i "$coverPath" ');
+      cmdBuffer.write('-i "$normalizedCoverPath" ');
     }
 
-    cmdBuffer.write('-map 0:a ');
+    final preserveExistingStreams = preserveMetadata && !hasCover;
+    if (preserveExistingStreams) {
+      // When no replacement cover is provided, preserve all input streams so
+      // the existing attached artwork is not dropped during the metadata rewrite.
+      cmdBuffer.write('-map 0 -c copy ');
+    } else {
+      cmdBuffer.write('-map 0:a -c:a copy ');
+    }
     cmdBuffer.write(
       preserveMetadata ? '-map_metadata 0 ' : '-map_metadata -1 ',
     );
 
-    // For M4A/MP4, cover art is mapped as a video stream and stored in the
-    // 'covr' atom automatically by FFmpeg. The '-disposition attached_pic'
-    // flag is only valid for Matroska/WebM containers and must NOT be used here.
-    // Force the mp4 muxer when cover art is present because the default ipod
-    // muxer (auto-selected for .m4a) does not register a codec tag for mjpeg,
-    // causing "codec not currently supported in container" on FFmpeg 8.0+.
+    // For M4A cover replacements, mark the image as an attached picture so the
+    // mp4 muxer writes a proper covr atom instead of a generic MJPEG video track.
+    // Force the mp4 muxer because the default ipod muxer (auto-selected for .m4a)
+    // does not register a codec tag for mjpeg on FFmpeg 8.0+.
     if (hasCover) {
-      cmdBuffer.write('-map 1:v -c:v copy -f mp4 ');
+      cmdBuffer.write('-map 1:v -c:v copy -disposition:v:0 attached_pic ');
+      cmdBuffer.write('-metadata:s:v title="Album cover" ');
+      cmdBuffer.write('-metadata:s:v comment="Cover (front)" ');
+      cmdBuffer.write('-f mp4 ');
     }
-
-    cmdBuffer.write('-c:a copy ');
 
     if (metadata != null) {
       final m4aMetadata = _convertToM4aTags(metadata);
