@@ -19,6 +19,7 @@ Track _$TrackFromJson(Map<String, dynamic> json) => Track(
   duration: (json['duration'] as num).toInt(),
   trackNumber: (json['trackNumber'] as num?)?.toInt(),
   discNumber: (json['discNumber'] as num?)?.toInt(),
+  totalDiscs: (json['totalDiscs'] as num?)?.toInt(),
   releaseDate: json['releaseDate'] as String?,
   deezerId: json['deezerId'] as String?,
   availability: json['availability'] == null
@@ -29,6 +30,7 @@ Track _$TrackFromJson(Map<String, dynamic> json) => Track(
   source: json['source'] as String?,
   albumType: json['albumType'] as String?,
   totalTracks: (json['totalTracks'] as num?)?.toInt(),
+  composer: json['composer'] as String?,
   itemType: json['itemType'] as String?,
 );
 
@@ -45,12 +47,14 @@ Map<String, dynamic> _$TrackToJson(Track instance) => <String, dynamic>{
   'duration': instance.duration,
   'trackNumber': instance.trackNumber,
   'discNumber': instance.discNumber,
+  'totalDiscs': instance.totalDiscs,
   'releaseDate': instance.releaseDate,
   'deezerId': instance.deezerId,
   'availability': instance.availability,
   'source': instance.source,
   'albumType': instance.albumType,
   'totalTracks': instance.totalTracks,
+  'composer': instance.composer,
   'itemType': instance.itemType,
 };
 

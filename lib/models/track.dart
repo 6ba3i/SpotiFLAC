@@ -16,12 +16,14 @@ class Track {
   final int duration;
   final int? trackNumber;
   final int? discNumber;
+  final int? totalDiscs;
   final String? releaseDate;
   final String? deezerId;
   final ServiceAvailability? availability;
   final String? source;
   final String? albumType;
   final int? totalTracks;
+  final String? composer;
   final String? itemType;
 
   const Track({
@@ -37,12 +39,14 @@ class Track {
     required this.duration,
     this.trackNumber,
     this.discNumber,
+    this.totalDiscs,
     this.releaseDate,
     this.deezerId,
     this.availability,
     this.source,
     this.albumType,
     this.totalTracks,
+    this.composer,
     this.itemType,
   });
 

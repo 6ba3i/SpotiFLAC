@@ -410,9 +410,11 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date']?.toString(),
       albumType: data['album_type']?.toString() ?? album?.albumType,
       totalTracks: data['total_tracks'] as int? ?? album?.totalTracks,
+      composer: data['composer']?.toString(),
       source: data['provider_id']?.toString() ?? widget.extensionId,
     );
   }
@@ -1129,9 +1131,11 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       trackNumber:
           data['track_position'] as int? ?? data['track_number'] as int?,
       discNumber: data['disk_number'] as int? ?? data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: album.releaseDate,
       albumType: album.albumType,
       totalTracks: album.totalTracks,
+      composer: data['composer']?.toString(),
     );
   }
 

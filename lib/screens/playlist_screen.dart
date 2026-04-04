@@ -164,7 +164,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date']?.toString(),
+      totalTracks: data['total_tracks'] as int?,
+      composer: data['composer']?.toString(),
     );
   }
 

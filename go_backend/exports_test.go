@@ -224,3 +224,47 @@ func TestBuildReEnrichFFmpegMetadataOmitsEmptyFields(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyReEnrichTrackMetadataCopiesComposerAndTotals(t *testing.T) {
+	req := reEnrichRequest{}
+
+	applyReEnrichTrackMetadata(&req, ExtTrackMetadata{
+		TrackNumber: 7,
+		TotalTracks: 12,
+		DiscNumber:  2,
+		TotalDiscs:  3,
+		Composer:    "Composer",
+	})
+
+	if req.TrackNumber != 7 || req.TotalTracks != 12 {
+		t.Fatalf("track metadata = %d/%d", req.TrackNumber, req.TotalTracks)
+	}
+	if req.DiscNumber != 2 || req.TotalDiscs != 3 {
+		t.Fatalf("disc metadata = %d/%d", req.DiscNumber, req.TotalDiscs)
+	}
+	if req.Composer != "Composer" {
+		t.Fatalf("composer = %q", req.Composer)
+	}
+}
+
+func TestBuildReEnrichFFmpegMetadataFormatsTotalsAndComposer(t *testing.T) {
+	req := reEnrichRequest{
+		TrackNumber: 7,
+		TotalTracks: 12,
+		DiscNumber:  2,
+		TotalDiscs:  3,
+		Composer:    "Composer",
+	}
+
+	metadata := buildReEnrichFFmpegMetadata(&req, "")
+
+	if metadata["TRACKNUMBER"] != "7/12" {
+		t.Fatalf("TRACKNUMBER = %q", metadata["TRACKNUMBER"])
+	}
+	if metadata["DISCNUMBER"] != "2/3" {
+		t.Fatalf("DISCNUMBER = %q", metadata["DISCNUMBER"])
+	}
+	if metadata["COMPOSER"] != "Composer" {
+		t.Fatalf("COMPOSER = %q", metadata["COMPOSER"])
+	}
+}

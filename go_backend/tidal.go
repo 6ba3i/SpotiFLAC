@@ -1012,6 +1012,7 @@ func (t *TidalDownloader) GetAlbumMetadata(resourceID string) (*AlbumResponsePay
 	}
 
 	tracks := make([]AlbumTrackMetadata, 0, len(itemsModule.PagedList.Items))
+	totalDiscs := 0
 	for _, item := range itemsModule.PagedList.Items {
 		track := item.Item
 		track.Album.ID = headerModule.Album.ID
@@ -1019,7 +1020,13 @@ func (t *TidalDownloader) GetAlbumMetadata(resourceID string) (*AlbumResponsePay
 		track.Album.Cover = headerModule.Album.Cover
 		track.Album.ReleaseDate = headerModule.Album.ReleaseDate
 		track.Album.URL = headerModule.Album.URL
+		if track.VolumeNumber > totalDiscs {
+			totalDiscs = track.VolumeNumber
+		}
 		tracks = append(tracks, tidalTrackToAlbumTrackMetadata(&track))
+	}
+	for i := range tracks {
+		tracks[i].TotalDiscs = totalDiscs
 	}
 
 	return &AlbumResponsePayload{
@@ -2360,10 +2367,12 @@ func downloadFromTidal(req DownloadRequest) (TidalDownloadResult, error) {
 		TrackNumber:   actualTrackNumber,
 		TotalTracks:   req.TotalTracks,
 		DiscNumber:    actualDiscNumber,
+		TotalDiscs:    req.TotalDiscs,
 		ISRC:          track.ISRC,
 		Genre:         req.Genre,
 		Label:         req.Label,
 		Copyright:     req.Copyright,
+		Composer:      req.Composer,
 	}
 
 	var coverData []byte

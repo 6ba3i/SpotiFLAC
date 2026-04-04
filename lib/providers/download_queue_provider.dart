@@ -3251,11 +3251,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       isrc: backendIsrc ?? baseTrack.isrc,
       trackNumber: backendTrackNum ?? baseTrack.trackNumber,
       discNumber: backendDiscNum ?? baseTrack.discNumber,
+      totalDiscs: baseTrack.totalDiscs,
       releaseDate: backendYear ?? baseTrack.releaseDate,
       deezerId: baseTrack.deezerId,
       availability: baseTrack.availability,
       albumType: baseTrack.albumType,
       totalTracks: baseTrack.totalTracks,
+      composer: baseTrack.composer,
       source: baseTrack.source,
     );
   }
@@ -3329,17 +3331,25 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         'ARTIST': track.artistName,
         'ALBUM': track.albumName,
       };
+      String formatIndexTag(int number, int? total) {
+        if (total != null && total > 0) {
+          return '$number/$total';
+        }
+        return number.toString();
+      }
 
       final albumArtist = _resolveAlbumArtistForMetadata(track, settings);
       metadata['ALBUMARTIST'] = albumArtist;
 
       if (track.trackNumber != null && track.trackNumber! > 0) {
-        metadata['TRACKNUMBER'] = track.trackNumber.toString();
-        if (isFlac || isMp3) metadata['TRACK'] = track.trackNumber.toString();
+        final trackTag = formatIndexTag(track.trackNumber!, track.totalTracks);
+        metadata['TRACKNUMBER'] = trackTag;
+        if (isFlac || isMp3) metadata['TRACK'] = trackTag;
       }
       if (track.discNumber != null && track.discNumber! > 0) {
-        metadata['DISCNUMBER'] = track.discNumber.toString();
-        if (isFlac || isMp3) metadata['DISC'] = track.discNumber.toString();
+        final discTag = formatIndexTag(track.discNumber!, track.totalDiscs);
+        metadata['DISCNUMBER'] = discTag;
+        if (isFlac || isMp3) metadata['DISC'] = discTag;
       }
       if (track.releaseDate != null) {
         metadata['DATE'] = track.releaseDate!;
@@ -3352,6 +3362,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       if (label != null && label.isNotEmpty) metadata['ORGANIZATION'] = label;
       if (copyright != null && copyright.isNotEmpty) {
         metadata['COPYRIGHT'] = copyright;
+      }
+      if (track.composer != null && track.composer!.isNotEmpty) {
+        metadata['COMPOSER'] = track.composer!;
       }
 
       // ── Lyrics ──────────────────────────────────────────────────────
@@ -3875,7 +3888,11 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           (trackToDownload.isrc == null ||
               trackToDownload.isrc!.isEmpty ||
               trackToDownload.trackNumber == null ||
-              trackToDownload.trackNumber == 0);
+              trackToDownload.trackNumber == 0 ||
+              trackToDownload.totalTracks == null ||
+              trackToDownload.totalTracks == 0 ||
+              (trackToDownload.composer == null ||
+                  trackToDownload.composer!.isEmpty));
 
       if (needsEnrichment) {
         try {
@@ -3923,6 +3940,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                 isrc: (data['isrc'] as String?) ?? trackToDownload.isrc,
                 trackNumber: data['track_number'] as int?,
                 discNumber: data['disc_number'] as int?,
+                totalDiscs:
+                    data['total_discs'] as int? ?? trackToDownload.totalDiscs,
                 releaseDate: data['release_date'] as String?,
                 deezerId: rawId,
                 availability: trackToDownload.availability,
@@ -3931,6 +3950,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                     trackToDownload.albumType,
                 totalTracks:
                     data['total_tracks'] as int? ?? trackToDownload.totalTracks,
+                composer:
+                    data['composer']?.toString() ?? trackToDownload.composer,
                 source: trackToDownload.source,
               );
               _log.d(
@@ -4101,7 +4122,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                 trackData['release_date'] as String?,
               );
               final provTrackNum = trackData['track_number'] as int?;
+              final provTotalTracks = trackData['total_tracks'] as int?;
               final provDiscNum = trackData['disc_number'] as int?;
+              final provTotalDiscs = trackData['total_discs'] as int?;
+              final provComposer = normalizeOptionalString(
+                trackData['composer'] as String?,
+              );
 
               trackToDownload = Track(
                 id: trackToDownload.id,
@@ -4124,11 +4150,21 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                         trackToDownload.discNumber! > 0)
                     ? trackToDownload.discNumber
                     : provDiscNum,
+                totalDiscs:
+                    (trackToDownload.totalDiscs != null &&
+                        trackToDownload.totalDiscs! > 0)
+                    ? trackToDownload.totalDiscs
+                    : provTotalDiscs,
                 releaseDate: trackToDownload.releaseDate ?? provReleaseDate,
                 deezerId: trackToDownload.deezerId,
                 availability: trackToDownload.availability,
                 albumType: trackToDownload.albumType,
-                totalTracks: trackToDownload.totalTracks,
+                totalTracks:
+                    (trackToDownload.totalTracks != null &&
+                        trackToDownload.totalTracks! > 0)
+                    ? trackToDownload.totalTracks
+                    : provTotalTracks,
+                composer: trackToDownload.composer ?? provComposer,
                 source: trackToDownload.source,
               );
 
@@ -4198,7 +4234,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               trackData['isrc'] as String?,
             );
             final deezerTrackNum = trackData['track_number'] as int?;
+            final deezerTotalTracks = trackData['total_tracks'] as int?;
             final deezerDiscNum = trackData['disc_number'] as int?;
+            final deezerTotalDiscs = trackData['total_discs'] as int?;
+            final deezerComposer = normalizeOptionalString(
+              trackData['composer'] as String?,
+            );
 
             final needsEnrich =
                 (trackToDownload.releaseDate == null &&
@@ -4210,10 +4251,21 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                         trackToDownload.trackNumber! <= 0) &&
                     deezerTrackNum != null &&
                     deezerTrackNum > 0) ||
+                ((trackToDownload.totalTracks == null ||
+                        trackToDownload.totalTracks! <= 0) &&
+                    deezerTotalTracks != null &&
+                    deezerTotalTracks > 0) ||
                 ((trackToDownload.discNumber == null ||
                         trackToDownload.discNumber! <= 0) &&
                     deezerDiscNum != null &&
-                    deezerDiscNum > 0);
+                    deezerDiscNum > 0) ||
+                ((trackToDownload.totalDiscs == null ||
+                        trackToDownload.totalDiscs! <= 0) &&
+                    deezerTotalDiscs != null &&
+                    deezerTotalDiscs > 0) ||
+                ((trackToDownload.composer == null ||
+                        trackToDownload.composer!.isEmpty) &&
+                    deezerComposer != null);
 
             if (needsEnrich) {
               trackToDownload = Track(
@@ -4239,11 +4291,21 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                         trackToDownload.discNumber! > 0)
                     ? trackToDownload.discNumber
                     : deezerDiscNum,
+                totalDiscs:
+                    (trackToDownload.totalDiscs != null &&
+                        trackToDownload.totalDiscs! > 0)
+                    ? trackToDownload.totalDiscs
+                    : deezerTotalDiscs,
                 releaseDate: trackToDownload.releaseDate ?? deezerReleaseDate,
                 deezerId: deezerTrackId,
                 availability: trackToDownload.availability,
                 albumType: trackToDownload.albumType,
-                totalTracks: trackToDownload.totalTracks,
+                totalTracks:
+                    (trackToDownload.totalTracks != null &&
+                        trackToDownload.totalTracks! > 0)
+                    ? trackToDownload.totalTracks
+                    : deezerTotalTracks,
+                composer: trackToDownload.composer ?? deezerComposer,
                 source: trackToDownload.source,
               );
               _log.d(
@@ -4390,6 +4452,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               metadataEmbeddingEnabled && settings.maxQualityCover,
           trackNumber: normalizedTrackNumber,
           discNumber: normalizedDiscNumber,
+          totalTracks: trackToDownload.totalTracks ?? 0,
+          totalDiscs: trackToDownload.totalDiscs ?? 0,
           releaseDate: trackToDownload.releaseDate ?? '',
           itemId: item.id,
           durationMs: trackToDownload.duration,
@@ -4397,6 +4461,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           genre: genre ?? '',
           label: label ?? '',
           copyright: copyright ?? '',
+          composer: trackToDownload.composer ?? '',
           qobuzId: payloadQobuzId,
           tidalId: payloadTidalId,
           deezerId: deezerTrackId ?? '',

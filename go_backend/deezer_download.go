@@ -369,10 +369,12 @@ func downloadFromDeezer(req DownloadRequest) (DeezerDownloadResult, error) {
 		TrackNumber:   req.TrackNumber,
 		TotalTracks:   req.TotalTracks,
 		DiscNumber:    req.DiscNumber,
+		TotalDiscs:    req.TotalDiscs,
 		ISRC:          req.ISRC,
 		Genre:         req.Genre,
 		Label:         req.Label,
 		Copyright:     req.Copyright,
+		Composer:      req.Composer,
 	}
 
 	var coverData []byte

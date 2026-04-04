@@ -906,9 +906,11 @@ class TrackNotifier extends Notifier<TrackState> {
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date'] as String?,
       albumType: data['album_type'] as String?,
       totalTracks: data['total_tracks'] as int?,
+      composer: data['composer']?.toString(),
     );
   }
 
@@ -939,10 +941,12 @@ class TrackNotifier extends Notifier<TrackState> {
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date']?.toString(),
       totalTracks: data['total_tracks'] as int?,
       source: effectiveSource,
       albumType: data['album_type']?.toString(),
+      composer: data['composer']?.toString(),
       itemType: itemType,
     );
   }

@@ -55,6 +55,7 @@ type DownloadRequest struct {
 	TrackNumber          int    `json:"track_number"`
 	DiscNumber           int    `json:"disc_number"`
 	TotalTracks          int    `json:"total_tracks"`
+	TotalDiscs           int    `json:"total_discs,omitempty"`
 	ReleaseDate          string `json:"release_date"`
 	ItemID               string `json:"item_id"`
 	DurationMS           int    `json:"duration_ms"`
@@ -62,6 +63,7 @@ type DownloadRequest struct {
 	Genre                string `json:"genre,omitempty"`
 	Label                string `json:"label,omitempty"`
 	Copyright            string `json:"copyright,omitempty"`
+	Composer             string `json:"composer,omitempty"`
 	TidalID              string `json:"tidal_id,omitempty"`
 	QobuzID              string `json:"qobuz_id,omitempty"`
 	DeezerID             string `json:"deezer_id,omitempty"`
@@ -88,11 +90,14 @@ type DownloadResponse struct {
 	ReleaseDate            string `json:"release_date,omitempty"`
 	TrackNumber            int    `json:"track_number,omitempty"`
 	DiscNumber             int    `json:"disc_number,omitempty"`
+	TotalTracks            int    `json:"total_tracks,omitempty"`
+	TotalDiscs             int    `json:"total_discs,omitempty"`
 	ISRC                   string `json:"isrc,omitempty"`
 	CoverURL               string `json:"cover_url,omitempty"`
 	Genre                  string `json:"genre,omitempty"`
 	Label                  string `json:"label,omitempty"`
 	Copyright              string `json:"copyright,omitempty"`
+	Composer               string `json:"composer,omitempty"`
 	SkipMetadataEnrichment bool   `json:"skip_metadata_enrichment,omitempty"`
 	LyricsLRC              string `json:"lyrics_lrc,omitempty"`
 	DecryptionKey          string `json:"decryption_key,omitempty"`
@@ -107,12 +112,15 @@ type DownloadResult struct {
 	Album         string
 	ReleaseDate   string
 	TrackNumber   int
+	TotalTracks   int
 	DiscNumber    int
+	TotalDiscs    int
 	ISRC          string
 	CoverURL      string
 	Genre         string
 	Label         string
 	Copyright     string
+	Composer      string
 	LyricsLRC     string
 	DecryptionKey string
 }
@@ -130,11 +138,14 @@ type reEnrichRequest struct {
 	AlbumArtist   string   `json:"album_artist"`
 	TrackNumber   int      `json:"track_number"`
 	DiscNumber    int      `json:"disc_number"`
+	TotalTracks   int      `json:"total_tracks,omitempty"`
+	TotalDiscs    int      `json:"total_discs,omitempty"`
 	ReleaseDate   string   `json:"release_date"`
 	ISRC          string   `json:"isrc"`
 	Genre         string   `json:"genre"`
 	Label         string   `json:"label"`
 	Copyright     string   `json:"copyright"`
+	Composer      string   `json:"composer"`
 	DurationMs    int64    `json:"duration_ms"`
 	SearchOnline  bool     `json:"search_online"`
 	UpdateFields  []string `json:"update_fields,omitempty"`
@@ -183,8 +194,14 @@ func applyReEnrichTrackMetadata(req *reEnrichRequest, track ExtTrackMetadata) {
 		if track.TrackNumber > 0 {
 			req.TrackNumber = track.TrackNumber
 		}
+		if track.TotalTracks > 0 {
+			req.TotalTracks = track.TotalTracks
+		}
 		if track.DiscNumber > 0 {
 			req.DiscNumber = track.DiscNumber
+		}
+		if track.TotalDiscs > 0 {
+			req.TotalDiscs = track.TotalDiscs
 		}
 	}
 	if req.shouldUpdateField("release_info") {
@@ -213,6 +230,9 @@ func applyReEnrichTrackMetadata(req *reEnrichRequest, track ExtTrackMetadata) {
 		if track.Copyright != "" {
 			req.Copyright = track.Copyright
 		}
+		if track.Composer != "" {
+			req.Composer = track.Composer
+		}
 	}
 }
 
@@ -225,6 +245,11 @@ func reEnrichDownloadRequest(req reEnrichRequest) DownloadRequest {
 		ISRC:          req.ISRC,
 		DurationMS:    int(req.DurationMs),
 		ArtistTagMode: req.ArtistTagMode,
+		TrackNumber:   req.TrackNumber,
+		TotalTracks:   req.TotalTracks,
+		DiscNumber:    req.DiscNumber,
+		TotalDiscs:    req.TotalDiscs,
+		Composer:      req.Composer,
 	}
 }
 
@@ -256,13 +281,16 @@ func buildReEnrichFFmpegMetadata(req *reEnrichRequest, lyricsLRC string) map[str
 		if req.Copyright != "" {
 			metadata["COPYRIGHT"] = req.Copyright
 		}
+		if req.Composer != "" {
+			metadata["COMPOSER"] = req.Composer
+		}
 	}
 	if req.shouldUpdateField("track_info") {
 		if req.TrackNumber > 0 {
-			metadata["TRACKNUMBER"] = fmt.Sprintf("%d", req.TrackNumber)
+			metadata["TRACKNUMBER"] = formatIndexValue(req.TrackNumber, req.TotalTracks)
 		}
 		if req.DiscNumber > 0 {
-			metadata["DISCNUMBER"] = fmt.Sprintf("%d", req.DiscNumber)
+			metadata["DISCNUMBER"] = formatIndexValue(req.DiscNumber, req.TotalDiscs)
 		}
 	}
 	if req.shouldUpdateField("lyrics") {
@@ -367,11 +395,14 @@ func extTrackFromTrackMetadata(track *TrackMetadata, providerID string) *ExtTrac
 		Images:      track.Images,
 		ReleaseDate: track.ReleaseDate,
 		TrackNumber: track.TrackNumber,
+		TotalTracks: track.TotalTracks,
 		DiscNumber:  track.DiscNumber,
+		TotalDiscs:  track.TotalDiscs,
 		ISRC:        track.ISRC,
 		ProviderID:  providerID,
 		DeezerID:    deezerID,
 		SpotifyID:   track.SpotifyID,
+		Composer:    track.Composer,
 	}
 }
 
@@ -533,6 +564,11 @@ func buildDownloadSuccessResponse(
 		copyright = req.Copyright
 	}
 
+	composer := result.Composer
+	if composer == "" {
+		composer = req.Composer
+	}
+
 	coverURL := strings.TrimSpace(result.CoverURL)
 	if coverURL == "" {
 		coverURL = strings.TrimSpace(req.CoverURL)
@@ -552,12 +588,15 @@ func buildDownloadSuccessResponse(
 		AlbumArtist:      req.AlbumArtist,
 		ReleaseDate:      releaseDate,
 		TrackNumber:      trackNumber,
+		TotalTracks:      req.TotalTracks,
 		DiscNumber:       discNumber,
+		TotalDiscs:       req.TotalDiscs,
 		ISRC:             isrc,
 		CoverURL:         coverURL,
 		Genre:            genre,
 		Label:            label,
 		Copyright:        copyright,
+		Composer:         composer,
 		LyricsLRC:        result.LyricsLRC,
 		DecryptionKey:    result.DecryptionKey,
 	}
@@ -1005,7 +1044,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 		"album_artist": "",
 		"date":         "",
 		"track_number": 0,
+		"total_tracks": 0,
 		"disc_number":  0,
+		"total_discs":  0,
 		"isrc":         "",
 		"lyrics":       "",
 		"genre":        "",
@@ -1033,7 +1074,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 					result["date"] = oggMeta.Year
 				}
 				result["track_number"] = oggMeta.TrackNumber
+				result["total_tracks"] = oggMeta.TotalTracks
 				result["disc_number"] = oggMeta.DiscNumber
+				result["total_discs"] = oggMeta.TotalDiscs
 				result["isrc"] = oggMeta.ISRC
 				result["lyrics"] = oggMeta.Lyrics
 				result["genre"] = oggMeta.Genre
@@ -1054,7 +1097,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 			result["album_artist"] = metadata.AlbumArtist
 			result["date"] = metadata.Date
 			result["track_number"] = metadata.TrackNumber
+			result["total_tracks"] = metadata.TotalTracks
 			result["disc_number"] = metadata.DiscNumber
+			result["total_discs"] = metadata.TotalDiscs
 			result["isrc"] = metadata.ISRC
 			result["lyrics"] = metadata.Lyrics
 			result["genre"] = metadata.Genre
@@ -1088,7 +1133,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 				result["date"] = meta.Year
 			}
 			result["track_number"] = meta.TrackNumber
+			result["total_tracks"] = meta.TotalTracks
 			result["disc_number"] = meta.DiscNumber
+			result["total_discs"] = meta.TotalDiscs
 			result["isrc"] = meta.ISRC
 			result["lyrics"] = meta.Lyrics
 			result["genre"] = meta.Genre
@@ -1118,7 +1165,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 				result["date"] = meta.Year
 			}
 			result["track_number"] = meta.TrackNumber
+			result["total_tracks"] = meta.TotalTracks
 			result["disc_number"] = meta.DiscNumber
+			result["total_discs"] = meta.TotalDiscs
 			result["isrc"] = meta.ISRC
 			result["lyrics"] = meta.Lyrics
 			result["genre"] = meta.Genre
@@ -1149,7 +1198,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 				result["date"] = meta.Year
 			}
 			result["track_number"] = meta.TrackNumber
+			result["total_tracks"] = meta.TotalTracks
 			result["disc_number"] = meta.DiscNumber
+			result["total_discs"] = meta.TotalDiscs
 			result["isrc"] = meta.ISRC
 			result["lyrics"] = meta.Lyrics
 			result["genre"] = meta.Genre
@@ -1182,7 +1233,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 					result["date"] = meta.Year
 				}
 				result["track_number"] = meta.TrackNumber
+				result["total_tracks"] = meta.TotalTracks
 				result["disc_number"] = meta.DiscNumber
+				result["total_discs"] = meta.TotalDiscs
 				result["isrc"] = meta.ISRC
 				result["lyrics"] = meta.Lyrics
 				result["genre"] = meta.Genre
@@ -1281,12 +1334,20 @@ func EditFileMetadata(filePath, metadataJSON string) (string, error) {
 	// APE/WV/MPC: write APEv2 tags natively
 	if isApeFile {
 		trackNum := 0
+		totalTracks := 0
 		discNum := 0
+		totalDiscs := 0
 		if v, ok := fields["track_number"]; ok && v != "" {
 			fmt.Sscanf(v, "%d", &trackNum)
 		}
+		if v, ok := fields["track_total"]; ok && v != "" {
+			fmt.Sscanf(v, "%d", &totalTracks)
+		}
 		if v, ok := fields["disc_number"]; ok && v != "" {
 			fmt.Sscanf(v, "%d", &discNum)
+		}
+		if v, ok := fields["disc_total"]; ok && v != "" {
+			fmt.Sscanf(v, "%d", &totalDiscs)
 		}
 
 		meta := &AudioMetadata{
@@ -1296,7 +1357,9 @@ func EditFileMetadata(filePath, metadataJSON string) (string, error) {
 			AlbumArtist:         fields["album_artist"],
 			Date:                fields["date"],
 			TrackNumber:         trackNum,
+			TotalTracks:         totalTracks,
 			DiscNumber:          discNum,
+			TotalDiscs:          totalDiscs,
 			ISRC:                fields["isrc"],
 			Genre:               fields["genre"],
 			Label:               fields["label"],
@@ -1930,11 +1993,13 @@ func buildDeezerISRCSearchResult(track *TrackMetadata) map[string]interface{} {
 		"track_number":  track.TrackNumber,
 		"total_tracks":  track.TotalTracks,
 		"disc_number":   track.DiscNumber,
+		"total_discs":   track.TotalDiscs,
 		"external_urls": track.ExternalURL,
 		"isrc":          track.ISRC,
 		"album_id":      track.AlbumID,
 		"artist_id":     track.ArtistID,
 		"album_type":    track.AlbumType,
+		"composer":      track.Composer,
 	}
 
 	if deezerID := strings.TrimSpace(strings.TrimPrefix(track.SpotifyID, "deezer:")); deezerID != "" {
@@ -2379,7 +2444,9 @@ func ReEnrichFile(requestJSON string) (string, error) {
 	}
 	if req.shouldUpdateField("track_info") {
 		enrichedMeta["track_number"] = req.TrackNumber
+		enrichedMeta["total_tracks"] = req.TotalTracks
 		enrichedMeta["disc_number"] = req.DiscNumber
+		enrichedMeta["total_discs"] = req.TotalDiscs
 	}
 	if req.shouldUpdateField("release_info") {
 		enrichedMeta["release_date"] = req.ReleaseDate
@@ -2392,6 +2459,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 		enrichedMeta["genre"] = req.Genre
 		enrichedMeta["label"] = req.Label
 		enrichedMeta["copyright"] = req.Copyright
+		enrichedMeta["composer"] = req.Composer
 	}
 
 	if isFlac {
@@ -2408,7 +2476,9 @@ func ReEnrichFile(requestJSON string) (string, error) {
 		}
 		if req.shouldUpdateField("track_info") {
 			metadata.TrackNumber = req.TrackNumber
+			metadata.TotalTracks = req.TotalTracks
 			metadata.DiscNumber = req.DiscNumber
+			metadata.TotalDiscs = req.TotalDiscs
 		}
 		if req.shouldUpdateField("release_info") {
 			metadata.Date = req.ReleaseDate
@@ -2421,6 +2491,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 			metadata.Genre = req.Genre
 			metadata.Label = req.Label
 			metadata.Copyright = req.Copyright
+			metadata.Composer = req.Composer
 		}
 
 		if len(coverDataBytes) > 0 {
@@ -2910,11 +2981,14 @@ func CustomSearchWithExtensionJSON(extensionID, query string, optionsJSON string
 			"images":       track.ResolvedCoverURL(),
 			"release_date": track.ReleaseDate,
 			"track_number": track.TrackNumber,
+			"total_tracks": track.TotalTracks,
 			"disc_number":  track.DiscNumber,
+			"total_discs":  track.TotalDiscs,
 			"isrc":         track.ISRC,
 			"provider_id":  track.ProviderID,
 			"item_type":    track.ItemType,
 			"album_type":   track.AlbumType,
+			"composer":     track.Composer,
 		}
 	}
 
@@ -2981,9 +3055,12 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 			"images":       result.Track.ResolvedCoverURL(),
 			"release_date": result.Track.ReleaseDate,
 			"track_number": result.Track.TrackNumber,
+			"total_tracks": result.Track.TotalTracks,
 			"disc_number":  result.Track.DiscNumber,
+			"total_discs":  result.Track.TotalDiscs,
 			"isrc":         result.Track.ISRC,
 			"provider_id":  result.Track.ProviderID,
+			"composer":     result.Track.Composer,
 		}
 	}
 
@@ -3000,11 +3077,14 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 				"images":       track.ResolvedCoverURL(),
 				"release_date": track.ReleaseDate,
 				"track_number": track.TrackNumber,
+				"total_tracks": track.TotalTracks,
 				"disc_number":  track.DiscNumber,
+				"total_discs":  track.TotalDiscs,
 				"isrc":         track.ISRC,
 				"provider_id":  track.ProviderID,
 				"item_type":    track.ItemType,
 				"album_type":   track.AlbumType,
+				"composer":     track.Composer,
 			}
 		}
 		response["tracks"] = tracks
@@ -3090,10 +3170,13 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 					"images":       track.ResolvedCoverURL(),
 					"release_date": track.ReleaseDate,
 					"track_number": track.TrackNumber,
+					"total_tracks": track.TotalTracks,
 					"disc_number":  track.DiscNumber,
+					"total_discs":  track.TotalDiscs,
 					"isrc":         track.ISRC,
 					"provider_id":  track.ProviderID,
 					"spotify_id":   track.SpotifyID,
+					"composer":     track.Composer,
 				}
 			}
 			artistResponse["top_tracks"] = topTracks
@@ -3163,11 +3246,14 @@ func GetAlbumWithExtensionJSON(extensionID, albumID string) (string, error) {
 			"cover_url":    trackCover,
 			"release_date": track.ReleaseDate,
 			"track_number": trackNum,
+			"total_tracks": track.TotalTracks,
 			"disc_number":  track.DiscNumber,
+			"total_discs":  track.TotalDiscs,
 			"isrc":         track.ISRC,
 			"provider_id":  track.ProviderID,
 			"item_type":    track.ItemType,
 			"album_type":   track.AlbumType,
+			"composer":     track.Composer,
 		}
 	}
 
@@ -3264,11 +3350,14 @@ func GetPlaylistWithExtensionJSON(extensionID, playlistID string) (string, error
 			"cover_url":    trackCover,
 			"release_date": track.ReleaseDate,
 			"track_number": track.TrackNumber,
+			"total_tracks": track.TotalTracks,
 			"disc_number":  track.DiscNumber,
+			"total_discs":  track.TotalDiscs,
 			"isrc":         track.ISRC,
 			"provider_id":  track.ProviderID,
 			"item_type":    track.ItemType,
 			"album_type":   track.AlbumType,
+			"composer":     track.Composer,
 		}
 	}
 
@@ -3375,10 +3464,13 @@ func GetArtistWithExtensionJSON(extensionID, artistID string) (string, error) {
 				"images":       track.ResolvedCoverURL(),
 				"release_date": track.ReleaseDate,
 				"track_number": track.TrackNumber,
+				"total_tracks": track.TotalTracks,
 				"disc_number":  track.DiscNumber,
+				"total_discs":  track.TotalDiscs,
 				"isrc":         track.ISRC,
 				"provider_id":  track.ProviderID,
 				"spotify_id":   track.SpotifyID,
+				"composer":     track.Composer,
 			}
 		}
 		response["top_tracks"] = topTracks

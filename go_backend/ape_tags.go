@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -367,12 +366,9 @@ func APETagToAudioMetadata(tag *APETag) *AudioMetadata {
 		case "DATE":
 			metadata.Date = value
 		case "TRACK", "TRACKNUMBER":
-			// APE track format can be "3" or "3/12"
-			trackNum, _ := strconv.Atoi(strings.Split(value, "/")[0])
-			metadata.TrackNumber = trackNum
+			metadata.TrackNumber, metadata.TotalTracks = parseIndexPair(value)
 		case "DISC", "DISCNUMBER":
-			discNum, _ := strconv.Atoi(strings.Split(value, "/")[0])
-			metadata.DiscNumber = discNum
+			metadata.DiscNumber, metadata.TotalDiscs = parseIndexPair(value)
 		case "ISRC":
 			metadata.ISRC = value
 		case "LYRICS", "UNSYNCEDLYRICS":
@@ -425,10 +421,10 @@ func AudioMetadataToAPEItems(metadata *AudioMetadata) []APETagItem {
 		addItem("Year", metadata.Year)
 	}
 	if metadata.TrackNumber > 0 {
-		addItem("Track", strconv.Itoa(metadata.TrackNumber))
+		addItem("Track", formatIndexValue(metadata.TrackNumber, metadata.TotalTracks))
 	}
 	if metadata.DiscNumber > 0 {
-		addItem("Disc", strconv.Itoa(metadata.DiscNumber))
+		addItem("Disc", formatIndexValue(metadata.DiscNumber, metadata.TotalDiscs))
 	}
 	addItem("ISRC", metadata.ISRC)
 	addItem("Lyrics", metadata.Lyrics)
@@ -484,7 +480,13 @@ func apeKeysFromFields(fields map[string]string) map[string]struct{} {
 	if _, present := fields["disc_number"]; present {
 		result["DISCNUMBER"] = struct{}{}
 	}
+	if _, present := fields["disc_total"]; present {
+		result["DISCNUMBER"] = struct{}{}
+	}
 	if _, present := fields["track_number"]; present {
+		result["TRACKNUMBER"] = struct{}{}
+	}
+	if _, present := fields["track_total"]; present {
 		result["TRACKNUMBER"] = struct{}{}
 	}
 	if _, present := fields["album_artist"]; present {

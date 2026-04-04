@@ -1840,6 +1840,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
       duration: item.durationMs ~/ 1000,
       trackNumber: null,
       discNumber: null,
+      totalDiscs: null,
       isrc: null,
       releaseDate: item.releaseDate,
       coverUrl: item.coverUrl,
@@ -4403,7 +4404,10 @@ class _ExtensionAlbumScreenState extends ConsumerState<ExtensionAlbumScreen> {
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date']?.toString(),
+      totalTracks: data['total_tracks'] as int?,
+      composer: data['composer']?.toString(),
       source: widget.extensionId,
     );
   }
@@ -4562,7 +4566,10 @@ class _ExtensionPlaylistScreenState
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date']?.toString(),
+      totalTracks: data['total_tracks'] as int?,
+      composer: data['composer']?.toString(),
       source: widget.extensionId,
     );
   }
@@ -4739,7 +4746,10 @@ class _ExtensionArtistScreenState extends ConsumerState<ExtensionArtistScreen> {
       duration: (durationMs / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date']?.toString(),
+      totalTracks: data['total_tracks'] as int?,
+      composer: data['composer']?.toString(),
       source: (data['provider_id'] ?? widget.extensionId).toString(),
     );
   }

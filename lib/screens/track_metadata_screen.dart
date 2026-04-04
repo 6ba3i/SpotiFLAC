@@ -327,8 +327,23 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
 
       // Resolve label/copyright from file when the model doesn't carry them
       // (e.g. local library items, or download history items without these fields).
+      final resolvedTotalTracks = _readPositiveInt(metadata['total_tracks']);
+      final resolvedTotalDiscs = _readPositiveInt(metadata['total_discs']);
+      final resolvedComposer = metadata['composer']?.toString();
       final resolvedLabel = metadata['label']?.toString();
       final resolvedCopyright = metadata['copyright']?.toString();
+      final needsTotalTracks =
+          resolvedTotalTracks != null &&
+          resolvedTotalTracks > 0 &&
+          totalTracks == null;
+      final needsTotalDiscs =
+          resolvedTotalDiscs != null &&
+          resolvedTotalDiscs > 0 &&
+          totalDiscs == null;
+      final needsComposer =
+          resolvedComposer != null &&
+          resolvedComposer.isNotEmpty &&
+          (composer == null || composer!.isEmpty);
       final needsLabel =
           resolvedLabel != null &&
           resolvedLabel.isNotEmpty &&
@@ -348,6 +363,9 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
               resolvedSampleRate != null ||
               needsAlbum ||
               needsDuration ||
+              needsTotalTracks ||
+              needsTotalDiscs ||
+              needsComposer ||
               needsLabel ||
               needsCopyright ||
               isPlaceholderQualityLabel(_quality)) &&
@@ -361,6 +379,9 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
             if (resolvedSampleRate != null) 'sample_rate': resolvedSampleRate,
             if (needsAlbum) 'album': resolvedAlbum,
             if (needsDuration) 'duration': resolvedDuration,
+            if (needsTotalTracks) 'total_tracks': resolvedTotalTracks,
+            if (needsTotalDiscs) 'total_discs': resolvedTotalDiscs,
+            if (needsComposer) 'composer': resolvedComposer,
             if (needsLabel) 'label': resolvedLabel,
             if (needsCopyright) 'copyright': resolvedCopyright,
           };
@@ -482,6 +503,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         : _downloadItem!.trackNumber;
   }
 
+  int? get totalTracks =>
+      _readPositiveInt(_editedMetadata?['total_tracks']) ??
+      (_isLocalItem ? _localLibraryItem!.totalTracks : null);
+
   int? get discNumber {
     final edited = _editedMetadata?['disc_number'];
     if (edited != null) {
@@ -492,6 +517,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         ? _localLibraryItem!.discNumber
         : _downloadItem!.discNumber;
   }
+
+  int? get totalDiscs =>
+      _readPositiveInt(_editedMetadata?['total_discs']) ??
+      (_isLocalItem ? _localLibraryItem!.totalDiscs : null);
 
   String? get releaseDate =>
       _editedMetadata?['date']?.toString() ??
@@ -523,6 +552,9 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
   String? get copyright =>
       _editedMetadata?['copyright']?.toString() ??
       (_isLocalItem ? _localLibraryItem!.copyright : _downloadItem!.copyright);
+  String? get composer =>
+      _editedMetadata?['composer']?.toString() ??
+      (_isLocalItem ? _localLibraryItem!.composer : null);
   int? get duration =>
       _readPositiveInt(_editedMetadata?['duration']) ??
       (_isLocalItem ? _localLibraryItem!.duration : _downloadItem!.duration);
@@ -1257,8 +1289,12 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
       _MetadataItem(context.l10n.trackAlbum, albumName),
       if (trackNumber != null && trackNumber! > 0)
         _MetadataItem(context.l10n.trackTrackNumber, trackNumber.toString()),
+      if (totalTracks != null && totalTracks! > 0)
+        _MetadataItem('Track Total', totalTracks.toString()),
       if (discNumber != null && discNumber! > 0)
         _MetadataItem(context.l10n.trackDiscNumber, discNumber.toString()),
+      if (totalDiscs != null && totalDiscs! > 0)
+        _MetadataItem('Disc Total', totalDiscs.toString()),
       if (duration != null)
         _MetadataItem(context.l10n.trackDuration, _formatDuration(duration!)),
       if (audioQualityStr != null)
@@ -1271,6 +1307,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         _MetadataItem(context.l10n.trackLabel, label!),
       if (copyright != null && copyright!.isNotEmpty)
         _MetadataItem(context.l10n.trackCopyright, copyright!),
+      if (composer != null && composer!.isNotEmpty)
+        _MetadataItem('Composer', composer!),
       if (isrc != null && isrc!.isNotEmpty) _MetadataItem('ISRC', isrc!),
     ];
 
@@ -2527,12 +2565,15 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         'album_name': albumName,
         'album_artist': albumArtist ?? artistName,
         'track_number': trackNumber ?? 0,
+        'total_tracks': totalTracks ?? 0,
         'disc_number': discNumber ?? 0,
+        'total_discs': totalDiscs ?? 0,
         'release_date': releaseDate ?? '',
         'isrc': isrc ?? '',
         'genre': genre ?? '',
         'label': label ?? '',
         'copyright': copyright ?? '',
+        'composer': composer ?? '',
         'duration_ms': durationMs,
         'search_online': true,
       };
@@ -2550,11 +2591,14 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
             'album_artist': enriched['album_artist'] ?? albumArtist,
             'date': enriched['release_date'] ?? releaseDate,
             'track_number': enriched['track_number'] ?? trackNumber,
+            'total_tracks': enriched['total_tracks'] ?? totalTracks,
             'disc_number': enriched['disc_number'] ?? discNumber,
+            'total_discs': enriched['total_discs'] ?? totalDiscs,
             'isrc': enriched['isrc'] ?? isrc,
             'genre': enriched['genre'] ?? genre,
             'label': enriched['label'] ?? label,
             'copyright': enriched['copyright'] ?? copyright,
+            'composer': enriched['composer'] ?? composer,
           };
         });
       }
@@ -2991,19 +3035,29 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
   }
 
   Map<String, String> _buildFallbackMetadata() {
+    String formatIndexTag(int number, int? total) {
+      if (total != null && total > 0) {
+        return '$number/$total';
+      }
+      return number.toString();
+    }
+
     return {
       'TITLE': trackName,
       'ARTIST': artistName,
       'ALBUM': albumName,
       if (albumArtist != null && albumArtist!.isNotEmpty)
         'ALBUMARTIST': albumArtist!,
-      if (trackNumber != null) 'TRACKNUMBER': trackNumber.toString(),
-      if (discNumber != null) 'DISCNUMBER': discNumber.toString(),
+      if (trackNumber != null)
+        'TRACKNUMBER': formatIndexTag(trackNumber!, totalTracks),
+      if (discNumber != null)
+        'DISCNUMBER': formatIndexTag(discNumber!, totalDiscs),
       if (releaseDate != null && releaseDate!.isNotEmpty) 'DATE': releaseDate!,
       if (isrc != null && isrc!.isNotEmpty) 'ISRC': isrc!,
       if (genre != null && genre!.isNotEmpty) 'GENRE': genre!,
       if (label != null && label!.isNotEmpty) 'LABEL': label!,
       if (copyright != null && copyright!.isNotEmpty) 'COPYRIGHT': copyright!,
+      if (composer != null && composer!.isNotEmpty) 'COMPOSER': composer!,
     };
   }
 
@@ -3031,12 +3085,26 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     put('UNSYNCEDLYRICS', source['lyrics']);
 
     final trackNumber = source['track_number'];
+    final totalTracks = source['total_tracks'];
     if (trackNumber != null && trackNumber.toString() != '0') {
-      put('TRACKNUMBER', trackNumber);
+      final trackTag =
+          totalTracks != null &&
+              totalTracks.toString().isNotEmpty &&
+              totalTracks.toString() != '0'
+          ? '${trackNumber.toString()}/${totalTracks.toString()}'
+          : trackNumber;
+      put('TRACKNUMBER', trackTag);
     }
     final discNumber = source['disc_number'];
+    final totalDiscs = source['total_discs'];
     if (discNumber != null && discNumber.toString() != '0') {
-      put('DISCNUMBER', discNumber);
+      final discTag =
+          totalDiscs != null &&
+              totalDiscs.toString().isNotEmpty &&
+              totalDiscs.toString() != '0'
+          ? '${discNumber.toString()}/${totalDiscs.toString()}'
+          : discNumber;
+      put('DISCNUMBER', discTag);
     }
 
     return mapped;
@@ -4023,13 +4091,17 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
       'date': val('date', releaseDate),
       'track_number': (fileMetadata?['track_number'] ?? trackNumber ?? '')
           .toString(),
+      'total_tracks': (fileMetadata?['total_tracks'] ?? totalTracks ?? '')
+          .toString(),
       'disc_number': (fileMetadata?['disc_number'] ?? discNumber ?? '')
+          .toString(),
+      'total_discs': (fileMetadata?['total_discs'] ?? totalDiscs ?? '')
           .toString(),
       'genre': val('genre', genre),
       'isrc': val('isrc', isrc),
       'label': val('label', label),
       'copyright': val('copyright', copyright),
-      'composer': fileMetadata?['composer']?.toString() ?? '',
+      'composer': val('composer', composer),
       'comment': fileMetadata?['comment']?.toString() ?? '',
     };
 
@@ -4316,11 +4388,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     'album_artist': 'album_artist',
     'date': 'date',
     'track_number': 'track_number',
+    'total_tracks': 'total_tracks',
     'disc_number': 'disc_number',
+    'total_discs': 'total_discs',
     'genre': 'genre',
     'isrc': 'isrc',
     'label': 'label',
     'copyright': 'copyright',
+    'composer': 'composer',
     'cover': 'cover',
   };
 
@@ -4330,7 +4405,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   late final TextEditingController _albumArtistCtrl;
   late final TextEditingController _dateCtrl;
   late final TextEditingController _trackNumCtrl;
+  late final TextEditingController _trackTotalCtrl;
   late final TextEditingController _discNumCtrl;
+  late final TextEditingController _discTotalCtrl;
   late final TextEditingController _genreCtrl;
   late final TextEditingController _isrcCtrl;
   late final TextEditingController _labelCtrl;
@@ -4518,8 +4595,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return l10n.editMetadataFieldDate;
       case 'track_number':
         return l10n.editMetadataFieldTrackNum;
+      case 'total_tracks':
+        return 'Track Total';
       case 'disc_number':
         return l10n.editMetadataFieldDiscNum;
+      case 'total_discs':
+        return 'Disc Total';
       case 'genre':
         return l10n.editMetadataFieldGenre;
       case 'isrc':
@@ -4528,6 +4609,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return l10n.editMetadataFieldLabel;
       case 'copyright':
         return l10n.editMetadataFieldCopyright;
+      case 'composer':
+        return 'Composer';
       case 'cover':
         return l10n.editMetadataFieldCover;
       default:
@@ -4549,8 +4632,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return _dateCtrl;
       case 'track_number':
         return _trackNumCtrl;
+      case 'total_tracks':
+        return _trackTotalCtrl;
       case 'disc_number':
         return _discNumCtrl;
+      case 'total_discs':
+        return _discTotalCtrl;
       case 'genre':
         return _genreCtrl;
       case 'isrc':
@@ -4559,6 +4646,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return _labelCtrl;
       case 'copyright':
         return _copyrightCtrl;
+      case 'composer':
+        return _composerCtrl;
       default:
         return null;
     }
@@ -4724,11 +4813,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     put('album_artist', track['album_artist']);
     put('date', track['release_date']);
     put('track_number', track['track_number']);
+    put('total_tracks', track['total_tracks']);
     put('disc_number', track['disc_number']);
+    put('total_discs', track['total_discs']);
     put('isrc', track['isrc']);
     put('genre', track['genre']);
     put('label', track['label']);
     put('copyright', track['copyright']);
+    put('composer', track['composer']);
   }
 
   Future<_ResolvedAutoFillTrack?> _resolveAutoFillTrackFromIdentifiers(
@@ -4929,8 +5021,11 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         'album_artist': (selectedBest['album_artist'] ?? '').toString(),
         'date': (selectedBest['release_date'] ?? '').toString(),
         'track_number': (selectedBest['track_number'] ?? '').toString(),
+        'total_tracks': (selectedBest['total_tracks'] ?? '').toString(),
         'disc_number': (selectedBest['disc_number'] ?? '').toString(),
+        'total_discs': (selectedBest['total_discs'] ?? '').toString(),
         'isrc': (selectedBest['isrc'] ?? '').toString(),
+        'composer': (selectedBest['composer'] ?? '').toString(),
       };
       _mergeOnlineTrackData(enriched, selectedBest);
 
@@ -4939,7 +5034,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       final needsExtended =
           _autoFillFields.contains('genre') ||
           _autoFillFields.contains('label') ||
-          _autoFillFields.contains('copyright');
+          _autoFillFields.contains('copyright') ||
+          _autoFillFields.contains('composer');
 
       final rawSpotifyId = _extractRawSpotifyTrackId(selectedBest);
 
@@ -5101,7 +5197,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     _albumArtistCtrl = TextEditingController(text: v['album_artist'] ?? '');
     _dateCtrl = TextEditingController(text: v['date'] ?? '');
     _trackNumCtrl = TextEditingController(text: v['track_number'] ?? '');
+    _trackTotalCtrl = TextEditingController(text: v['total_tracks'] ?? '');
     _discNumCtrl = TextEditingController(text: v['disc_number'] ?? '');
+    _discTotalCtrl = TextEditingController(text: v['total_discs'] ?? '');
     _genreCtrl = TextEditingController(text: v['genre'] ?? '');
     _isrcCtrl = TextEditingController(text: v['isrc'] ?? '');
     _labelCtrl = TextEditingController(text: v['label'] ?? '');
@@ -5121,7 +5219,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     _albumArtistCtrl.dispose();
     _dateCtrl.dispose();
     _trackNumCtrl.dispose();
+    _trackTotalCtrl.dispose();
     _discNumCtrl.dispose();
+    _discTotalCtrl.dispose();
     _genreCtrl.dispose();
     _isrcCtrl.dispose();
     _labelCtrl.dispose();
@@ -5141,7 +5241,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       'album_artist': _albumArtistCtrl.text,
       'date': _dateCtrl.text,
       'track_number': _trackNumCtrl.text,
+      'track_total': _trackTotalCtrl.text,
       'disc_number': _discNumCtrl.text,
+      'disc_total': _discTotalCtrl.text,
       'genre': _genreCtrl.text,
       'isrc': _isrcCtrl.text,
       'label': _labelCtrl.text,
@@ -5193,12 +5295,18 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           'TRACKNUMBER':
               (metadata['track_number']?.isNotEmpty == true &&
                   metadata['track_number'] != '0')
-              ? metadata['track_number']!
+              ? (metadata['track_total']?.isNotEmpty == true &&
+                        metadata['track_total'] != '0'
+                    ? '${metadata['track_number']}/${metadata['track_total']}'
+                    : metadata['track_number']!)
               : '',
           'DISCNUMBER':
               (metadata['disc_number']?.isNotEmpty == true &&
                   metadata['disc_number'] != '0')
-              ? metadata['disc_number']!
+              ? (metadata['disc_total']?.isNotEmpty == true &&
+                        metadata['disc_total'] != '0'
+                    ? '${metadata['disc_number']}/${metadata['disc_total']}'
+                    : metadata['disc_number']!)
               : '',
           'GENRE': metadata['genre'] ?? '',
           'ISRC': metadata['isrc'] ?? '',
@@ -5413,8 +5521,28 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _field(
+                          'Track Total',
+                          _trackTotalCtrl,
+                          keyboard: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _field(
                           'Disc #',
                           _discNumCtrl,
+                          keyboard: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _field(
+                          'Disc Total',
+                          _discTotalCtrl,
                           keyboard: TextInputType.number,
                         ),
                       ),

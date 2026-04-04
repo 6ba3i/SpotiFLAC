@@ -26,7 +26,9 @@ type ExtTrackMetadata struct {
 	Images      string `json:"images,omitempty"`
 	ReleaseDate string `json:"release_date,omitempty"`
 	TrackNumber int    `json:"track_number,omitempty"`
+	TotalTracks int    `json:"total_tracks,omitempty"`
 	DiscNumber  int    `json:"disc_number,omitempty"`
+	TotalDiscs  int    `json:"total_discs,omitempty"`
 	ISRC        string `json:"isrc,omitempty"`
 	ProviderID  string `json:"provider_id"`
 	ItemType    string `json:"item_type,omitempty"`
@@ -41,6 +43,7 @@ type ExtTrackMetadata struct {
 	Label     string `json:"label,omitempty"`
 	Copyright string `json:"copyright,omitempty"`
 	Genre     string `json:"genre,omitempty"`
+	Composer  string `json:"composer,omitempty"`
 }
 
 func (t *ExtTrackMetadata) ResolvedCoverURL() string {
@@ -775,7 +778,9 @@ func normalizeBuiltInMetadataTrack(track TrackMetadata, providerID string) ExtTr
 		Images:      track.Images,
 		ReleaseDate: track.ReleaseDate,
 		TrackNumber: track.TrackNumber,
+		TotalTracks: track.TotalTracks,
 		DiscNumber:  track.DiscNumber,
+		TotalDiscs:  track.TotalDiscs,
 		ISRC:        track.ISRC,
 		ProviderID:  providerID,
 		SpotifyID:   prefixedID,
@@ -783,6 +788,7 @@ func normalizeBuiltInMetadataTrack(track TrackMetadata, providerID string) ExtTr
 		TidalID:     tidalID,
 		QobuzID:     qobuzID,
 		AlbumType:   track.AlbumType,
+		Composer:    track.Composer,
 	}
 }
 
@@ -975,8 +981,11 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				ISRC:        req.ISRC,
 				ReleaseDate: req.ReleaseDate,
 				TrackNumber: req.TrackNumber,
+				TotalTracks: req.TotalTracks,
 				DiscNumber:  req.DiscNumber,
+				TotalDiscs:  req.TotalDiscs,
 				ProviderID:  req.Source,
+				Composer:    req.Composer,
 			}
 
 			enrichedTrack, err := provider.EnrichTrack(trackMeta)
@@ -1041,9 +1050,21 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 					GoLog("[DownloadWithExtensionFallback] TrackNumber from enrichment: %d\n", enrichedTrack.TrackNumber)
 					req.TrackNumber = enrichedTrack.TrackNumber
 				}
+				if enrichedTrack.TotalTracks > 0 && req.TotalTracks == 0 {
+					GoLog("[DownloadWithExtensionFallback] TotalTracks from enrichment: %d\n", enrichedTrack.TotalTracks)
+					req.TotalTracks = enrichedTrack.TotalTracks
+				}
 				if enrichedTrack.DiscNumber > 0 && req.DiscNumber == 0 {
 					GoLog("[DownloadWithExtensionFallback] DiscNumber from enrichment: %d\n", enrichedTrack.DiscNumber)
 					req.DiscNumber = enrichedTrack.DiscNumber
+				}
+				if enrichedTrack.TotalDiscs > 0 && req.TotalDiscs == 0 {
+					GoLog("[DownloadWithExtensionFallback] TotalDiscs from enrichment: %d\n", enrichedTrack.TotalDiscs)
+					req.TotalDiscs = enrichedTrack.TotalDiscs
+				}
+				if enrichedTrack.Composer != "" && req.Composer == "" {
+					GoLog("[DownloadWithExtensionFallback] Composer from enrichment: %s\n", enrichedTrack.Composer)
+					req.Composer = enrichedTrack.Composer
 				}
 			}
 		}
@@ -1077,8 +1098,17 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 			if track.TrackNumber > 0 && req.TrackNumber == 0 {
 				req.TrackNumber = track.TrackNumber
 			}
+			if track.TotalTracks > 0 && req.TotalTracks == 0 {
+				req.TotalTracks = track.TotalTracks
+			}
 			if track.DiscNumber > 0 && req.DiscNumber == 0 {
 				req.DiscNumber = track.DiscNumber
+			}
+			if track.TotalDiscs > 0 && req.TotalDiscs == 0 {
+				req.TotalDiscs = track.TotalDiscs
+			}
+			if track.Composer != "" && req.Composer == "" {
+				req.Composer = track.Composer
 			}
 			if track.CoverURL != "" && req.CoverURL == "" {
 				req.CoverURL = track.CoverURL
@@ -1594,12 +1624,15 @@ func buildOutputPath(req DownloadRequest) string {
 		"album_artist": req.AlbumArtist,
 		"track":        req.TrackNumber,
 		"track_number": req.TrackNumber,
+		"total_tracks": req.TotalTracks,
 		"disc":         req.DiscNumber,
 		"disc_number":  req.DiscNumber,
+		"total_discs":  req.TotalDiscs,
 		"year":         extractYear(req.ReleaseDate),
 		"date":         req.ReleaseDate,
 		"release_date": req.ReleaseDate,
 		"isrc":         req.ISRC,
+		"composer":     req.Composer,
 	}
 
 	filename := buildFilenameFromTemplate(req.FilenameFormat, metadata)
@@ -1644,12 +1677,15 @@ func buildOutputPathForExtension(req DownloadRequest, ext *LoadedExtension) stri
 		"album_artist": req.AlbumArtist,
 		"track":        req.TrackNumber,
 		"track_number": req.TrackNumber,
+		"total_tracks": req.TotalTracks,
 		"disc":         req.DiscNumber,
 		"disc_number":  req.DiscNumber,
+		"total_discs":  req.TotalDiscs,
 		"year":         extractYear(req.ReleaseDate),
 		"date":         req.ReleaseDate,
 		"release_date": req.ReleaseDate,
 		"isrc":         req.ISRC,
+		"composer":     req.Composer,
 	}
 
 	filename := buildFilenameFromTemplate(req.FilenameFormat, metadata)

@@ -100,12 +100,28 @@ void mergePlatformMetadataForTagEmbed({
   put('UNSYNCEDLYRICS', source['lyrics']);
 
   final trackNumber = source['track_number'];
+  final totalTracks = source['total_tracks'];
   if (trackNumber != null && trackNumber.toString() != '0') {
-    put('TRACKNUMBER', trackNumber);
+    put(
+      'TRACKNUMBER',
+      totalTracks != null &&
+              totalTracks.toString().isNotEmpty &&
+              totalTracks.toString() != '0'
+          ? '${trackNumber.toString()}/${totalTracks.toString()}'
+          : trackNumber,
+    );
   }
 
   final discNumber = source['disc_number'];
+  final totalDiscs = source['total_discs'];
   if (discNumber != null && discNumber.toString() != '0') {
-    put('DISCNUMBER', discNumber);
+    put(
+      'DISCNUMBER',
+      totalDiscs != null &&
+              totalDiscs.toString().isNotEmpty &&
+              totalDiscs.toString() != '0'
+          ? '${discNumber.toString()}/${totalDiscs.toString()}'
+          : discNumber,
+    );
   }
 }

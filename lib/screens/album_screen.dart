@@ -299,9 +299,11 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
       duration: ((data['duration_ms'] as int? ?? 0) / 1000).round(),
       trackNumber: data['track_number'] as int?,
       discNumber: data['disc_number'] as int?,
+      totalDiscs: data['total_discs'] as int?,
       releaseDate: data['release_date'] as String?,
       albumType: data['album_type'] as String?,
       totalTracks: data['total_tracks'] as int?,
+      composer: data['composer']?.toString(),
     );
   }
 

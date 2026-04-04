@@ -20,13 +20,16 @@ class LocalLibraryItem {
   final int? fileModTime;
   final String? isrc;
   final int? trackNumber;
+  final int? totalTracks;
   final int? discNumber;
+  final int? totalDiscs;
   final int? duration;
   final String? releaseDate;
   final int? bitDepth;
   final int? sampleRate;
   final int? bitrate; // kbps, for lossy formats (mp3, opus, ogg)
   final String? genre;
+  final String? composer;
   final String? label;
   final String? copyright;
   final String? format; // flac, mp3, opus, m4a
@@ -43,13 +46,16 @@ class LocalLibraryItem {
     this.fileModTime,
     this.isrc,
     this.trackNumber,
+    this.totalTracks,
     this.discNumber,
+    this.totalDiscs,
     this.duration,
     this.releaseDate,
     this.bitDepth,
     this.sampleRate,
     this.bitrate,
     this.genre,
+    this.composer,
     this.label,
     this.copyright,
     this.format,
@@ -67,13 +73,16 @@ class LocalLibraryItem {
     'fileModTime': fileModTime,
     'isrc': isrc,
     'trackNumber': trackNumber,
+    'totalTracks': totalTracks,
     'discNumber': discNumber,
+    'totalDiscs': totalDiscs,
     'duration': duration,
     'releaseDate': releaseDate,
     'bitDepth': bitDepth,
     'sampleRate': sampleRate,
     'bitrate': bitrate,
     'genre': genre,
+    'composer': composer,
     'label': label,
     'copyright': copyright,
     'format': format,
@@ -91,14 +100,17 @@ class LocalLibraryItem {
         scannedAt: DateTime.parse(json['scannedAt'] as String),
         fileModTime: (json['fileModTime'] as num?)?.toInt(),
         isrc: json['isrc'] as String?,
-        trackNumber: json['trackNumber'] as int?,
-        discNumber: json['discNumber'] as int?,
-        duration: json['duration'] as int?,
+        trackNumber: (json['trackNumber'] as num?)?.toInt(),
+        totalTracks: (json['totalTracks'] as num?)?.toInt(),
+        discNumber: (json['discNumber'] as num?)?.toInt(),
+        totalDiscs: (json['totalDiscs'] as num?)?.toInt(),
+        duration: (json['duration'] as num?)?.toInt(),
         releaseDate: json['releaseDate'] as String?,
-        bitDepth: json['bitDepth'] as int?,
-        sampleRate: json['sampleRate'] as int?,
+        bitDepth: (json['bitDepth'] as num?)?.toInt(),
+        sampleRate: (json['sampleRate'] as num?)?.toInt(),
         bitrate: (json['bitrate'] as num?)?.toInt(),
         genre: json['genre'] as String?,
+        composer: json['composer'] as String?,
         label: json['label'] as String?,
         copyright: json['copyright'] as String?,
         format: json['format'] as String?,
@@ -130,7 +142,7 @@ class LibraryDatabase {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         await db.rawQuery('PRAGMA journal_mode = WAL');
         await db.execute('PRAGMA synchronous = NORMAL');
@@ -156,13 +168,16 @@ class LibraryDatabase {
         file_mod_time INTEGER,
         isrc TEXT,
         track_number INTEGER,
+        total_tracks INTEGER,
         disc_number INTEGER,
+        total_discs INTEGER,
         duration INTEGER,
         release_date TEXT,
         bit_depth INTEGER,
         sample_rate INTEGER,
         bitrate INTEGER,
         genre TEXT,
+        composer TEXT,
         label TEXT,
         copyright TEXT,
         format TEXT
@@ -206,6 +221,13 @@ class LibraryDatabase {
       await db.execute('ALTER TABLE library ADD COLUMN copyright TEXT');
       _log.i('Added label/copyright columns');
     }
+
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE library ADD COLUMN total_tracks INTEGER');
+      await db.execute('ALTER TABLE library ADD COLUMN total_discs INTEGER');
+      await db.execute('ALTER TABLE library ADD COLUMN composer TEXT');
+      _log.i('Added total_tracks/total_discs/composer columns');
+    }
   }
 
   Map<String, dynamic> _jsonToDbRow(Map<String, dynamic> json) {
@@ -221,13 +243,16 @@ class LibraryDatabase {
       'file_mod_time': json['fileModTime'],
       'isrc': json['isrc'],
       'track_number': json['trackNumber'],
+      'total_tracks': json['totalTracks'],
       'disc_number': json['discNumber'],
+      'total_discs': json['totalDiscs'],
       'duration': json['duration'],
       'release_date': json['releaseDate'],
       'bit_depth': json['bitDepth'],
       'sample_rate': json['sampleRate'],
       'bitrate': json['bitrate'],
       'genre': json['genre'],
+      'composer': json['composer'],
       'label': json['label'],
       'copyright': json['copyright'],
       'format': json['format'],
@@ -247,13 +272,16 @@ class LibraryDatabase {
       'fileModTime': row['file_mod_time'],
       'isrc': row['isrc'],
       'trackNumber': row['track_number'],
+      'totalTracks': row['total_tracks'],
       'discNumber': row['disc_number'],
+      'totalDiscs': row['total_discs'],
       'duration': row['duration'],
       'releaseDate': row['release_date'],
       'bitDepth': row['bit_depth'],
       'sampleRate': row['sample_rate'],
       'bitrate': row['bitrate'],
       'genre': row['genre'],
+      'composer': row['composer'],
       'label': row['label'],
       'copyright': row['copyright'],
       'format': row['format'],

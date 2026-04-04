@@ -110,6 +110,7 @@ type Metadata struct {
 	TrackNumber   int
 	TotalTracks   int
 	DiscNumber    int
+	TotalDiscs    int
 	ISRC          string
 	Description   string
 	Lyrics        string
@@ -273,23 +274,23 @@ func ReadMetadata(filePath string) (*Metadata, error) {
 
 			trackNum := getComment(cmt, "TRACKNUMBER")
 			if trackNum != "" {
-				fmt.Sscanf(trackNum, "%d", &metadata.TrackNumber)
+				metadata.TrackNumber, metadata.TotalTracks = parseIndexPair(trackNum)
 			}
 			if metadata.TrackNumber == 0 {
 				trackNum = getComment(cmt, "TRACK")
 				if trackNum != "" {
-					fmt.Sscanf(trackNum, "%d", &metadata.TrackNumber)
+					metadata.TrackNumber, metadata.TotalTracks = parseIndexPair(trackNum)
 				}
 			}
 
 			discNum := getComment(cmt, "DISCNUMBER")
 			if discNum != "" {
-				fmt.Sscanf(discNum, "%d", &metadata.DiscNumber)
+				metadata.DiscNumber, metadata.TotalDiscs = parseIndexPair(discNum)
 			}
 			if metadata.DiscNumber == 0 {
 				discNum = getComment(cmt, "DISC")
 				if discNum != "" {
-					fmt.Sscanf(discNum, "%d", &metadata.DiscNumber)
+					metadata.DiscNumber, metadata.TotalDiscs = parseIndexPair(discNum)
 				}
 			}
 
@@ -403,26 +404,39 @@ func EditFlacFields(filePath string, fields map[string]string) error {
 		removeCommentKey(cmt, "ALBUM_ARTIST")
 	}
 
-	// Track/disc numbers: present + empty → clear; present + "0" → clear.
-	if v, ok := fields["track_number"]; ok {
-		trackNum := 0
-		if v != "" {
-			fmt.Sscanf(v, "%d", &trackNum)
+	// Track/disc numbers: present + empty → clear; when only totals are edited,
+	// preserve the current index number and rewrite the combined value.
+	if _, ok := fields["track_number"]; ok || fields["track_total"] != "" || hasMapKey(fields, "track_total") {
+		currentTrackNum, currentTotalTracks := parseIndexPair(getComment(cmt, "TRACKNUMBER"))
+		if currentTrackNum == 0 && currentTotalTracks == 0 {
+			currentTrackNum, currentTotalTracks = parseIndexPair(getComment(cmt, "TRACK"))
 		}
-		if trackNum > 0 {
-			setOrClearComment(cmt, "TRACKNUMBER", strconv.Itoa(trackNum))
+		if v, ok := fields["track_number"]; ok {
+			currentTrackNum = parsePositiveInt(v)
+		}
+		if v, ok := fields["track_total"]; ok {
+			currentTotalTracks = parsePositiveInt(v)
+		}
+		if currentTrackNum > 0 {
+			setOrClearComment(cmt, "TRACKNUMBER", formatIndexValue(currentTrackNum, currentTotalTracks))
 		} else {
 			removeCommentKey(cmt, "TRACKNUMBER")
 		}
 		removeCommentKey(cmt, "TRACK") // alias
 	}
-	if v, ok := fields["disc_number"]; ok {
-		discNum := 0
-		if v != "" {
-			fmt.Sscanf(v, "%d", &discNum)
+	if _, ok := fields["disc_number"]; ok || fields["disc_total"] != "" || hasMapKey(fields, "disc_total") {
+		currentDiscNum, currentTotalDiscs := parseIndexPair(getComment(cmt, "DISCNUMBER"))
+		if currentDiscNum == 0 && currentTotalDiscs == 0 {
+			currentDiscNum, currentTotalDiscs = parseIndexPair(getComment(cmt, "DISC"))
 		}
-		if discNum > 0 {
-			setOrClearComment(cmt, "DISCNUMBER", strconv.Itoa(discNum))
+		if v, ok := fields["disc_number"]; ok {
+			currentDiscNum = parsePositiveInt(v)
+		}
+		if v, ok := fields["disc_total"]; ok {
+			currentTotalDiscs = parsePositiveInt(v)
+		}
+		if currentDiscNum > 0 {
+			setOrClearComment(cmt, "DISCNUMBER", formatIndexValue(currentDiscNum, currentTotalDiscs))
 		} else {
 			removeCommentKey(cmt, "DISCNUMBER")
 		}
@@ -478,15 +492,11 @@ func writeVorbisMetadata(cmt *flacvorbis.MetaDataBlockVorbisComment, metadata Me
 	setComment(cmt, "DATE", metadata.Date)
 
 	if metadata.TrackNumber > 0 {
-		if metadata.TotalTracks > 0 {
-			setComment(cmt, "TRACKNUMBER", fmt.Sprintf("%d/%d", metadata.TrackNumber, metadata.TotalTracks))
-		} else {
-			setComment(cmt, "TRACKNUMBER", strconv.Itoa(metadata.TrackNumber))
-		}
+		setComment(cmt, "TRACKNUMBER", formatIndexValue(metadata.TrackNumber, metadata.TotalTracks))
 	}
 
 	if metadata.DiscNumber > 0 {
-		setComment(cmt, "DISCNUMBER", strconv.Itoa(metadata.DiscNumber))
+		setComment(cmt, "DISCNUMBER", formatIndexValue(metadata.DiscNumber, metadata.TotalDiscs))
 	}
 
 	if metadata.ISRC != "" {
@@ -953,9 +963,9 @@ func ReadM4ATags(filePath string) (*AudioMetadata, error) {
 		case "\xa9lyr":
 			metadata.Lyrics, _ = readM4ATextValue(f, header, fi.Size())
 		case "trkn":
-			metadata.TrackNumber, _ = readM4AIndexValue(f, header, fi.Size())
+			metadata.TrackNumber, metadata.TotalTracks, _ = readM4AIndexPair(f, header, fi.Size())
 		case "disk":
-			metadata.DiscNumber, _ = readM4AIndexValue(f, header, fi.Size())
+			metadata.DiscNumber, metadata.TotalDiscs, _ = readM4AIndexPair(f, header, fi.Size())
 		case "----":
 			name, value, freeformErr := readM4AFreeformValue(f, header, fi.Size())
 			if freeformErr == nil {
@@ -1148,6 +1158,41 @@ func readM4AIndexValue(f *os.File, parent atomHeader, fileSize int64) (int, erro
 		return 0, fmt.Errorf("index payload too short in %s", parent.typ)
 	}
 	return int(binary.BigEndian.Uint16(payload[2:4])), nil
+}
+
+func readM4AIndexPair(f *os.File, parent atomHeader, fileSize int64) (int, int, error) {
+	payload, err := readM4ADataPayload(f, parent, fileSize)
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(payload) < 6 {
+		return 0, 0, fmt.Errorf("index payload too short in %s", parent.typ)
+	}
+	return int(binary.BigEndian.Uint16(payload[2:4])), int(binary.BigEndian.Uint16(payload[4:6])), nil
+}
+
+func parsePositiveInt(value string) int {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	n, _ := strconv.Atoi(value)
+	return n
+}
+
+func formatIndexValue(number, total int) string {
+	if number <= 0 {
+		return ""
+	}
+	if total > 0 {
+		return fmt.Sprintf("%d/%d", number, total)
+	}
+	return strconv.Itoa(number)
+}
+
+func hasMapKey(fields map[string]string, key string) bool {
+	_, ok := fields[key]
+	return ok
 }
 
 func readM4AFreeformValue(f *os.File, parent atomHeader, fileSize int64) (string, string, error) {

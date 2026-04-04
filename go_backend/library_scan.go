@@ -24,13 +24,16 @@ type LibraryScanResult struct {
 	FileModTime          int64  `json:"fileModTime,omitempty"` // Unix timestamp in milliseconds
 	ISRC                 string `json:"isrc,omitempty"`
 	TrackNumber          int    `json:"trackNumber,omitempty"`
+	TotalTracks          int    `json:"totalTracks,omitempty"`
 	DiscNumber           int    `json:"discNumber,omitempty"`
+	TotalDiscs           int    `json:"totalDiscs,omitempty"`
 	Duration             int    `json:"duration,omitempty"`
 	ReleaseDate          string `json:"releaseDate,omitempty"`
 	BitDepth             int    `json:"bitDepth,omitempty"`
 	SampleRate           int    `json:"sampleRate,omitempty"`
 	Bitrate              int    `json:"bitrate,omitempty"` // kbps, for lossy formats (MP3, Opus, Vorbis)
 	Genre                string `json:"genre,omitempty"`
+	Composer             string `json:"composer,omitempty"`
 	Label                string `json:"label,omitempty"`
 	Copyright            string `json:"copyright,omitempty"`
 	Format               string `json:"format,omitempty"`
@@ -367,9 +370,12 @@ func scanFLACFile(filePath string, result *LibraryScanResult, displayNameHint st
 	result.AlbumArtist = metadata.AlbumArtist
 	result.ISRC = metadata.ISRC
 	result.TrackNumber = metadata.TrackNumber
+	result.TotalTracks = metadata.TotalTracks
 	result.DiscNumber = metadata.DiscNumber
+	result.TotalDiscs = metadata.TotalDiscs
 	result.ReleaseDate = metadata.Date
 	result.Genre = metadata.Genre
+	result.Composer = metadata.Composer
 	result.Label = metadata.Label
 	result.Copyright = metadata.Copyright
 
@@ -401,12 +407,15 @@ func scanM4AFile(filePath string, result *LibraryScanResult, displayNameHint str
 		result.AlbumArtist = metadata.AlbumArtist
 		result.ISRC = metadata.ISRC
 		result.TrackNumber = metadata.TrackNumber
+		result.TotalTracks = metadata.TotalTracks
 		result.DiscNumber = metadata.DiscNumber
+		result.TotalDiscs = metadata.TotalDiscs
 		result.ReleaseDate = metadata.Date
 		if result.ReleaseDate == "" {
 			result.ReleaseDate = metadata.Year
 		}
 		result.Genre = metadata.Genre
+		result.Composer = metadata.Composer
 		result.Label = metadata.Label
 		result.Copyright = metadata.Copyright
 	}
@@ -433,7 +442,9 @@ func scanMP3File(filePath string, result *LibraryScanResult, displayNameHint str
 	result.AlbumName = metadata.Album
 	result.AlbumArtist = metadata.AlbumArtist
 	result.TrackNumber = metadata.TrackNumber
+	result.TotalTracks = metadata.TotalTracks
 	result.DiscNumber = metadata.DiscNumber
+	result.TotalDiscs = metadata.TotalDiscs
 	result.Genre = metadata.Genre
 	if metadata.Date != "" {
 		result.ReleaseDate = metadata.Date
@@ -441,6 +452,7 @@ func scanMP3File(filePath string, result *LibraryScanResult, displayNameHint str
 		result.ReleaseDate = metadata.Year
 	}
 	result.ISRC = metadata.ISRC
+	result.Composer = metadata.Composer
 	result.Label = metadata.Label
 	result.Copyright = metadata.Copyright
 
@@ -472,9 +484,12 @@ func scanOggFile(filePath string, result *LibraryScanResult, displayNameHint str
 	result.AlbumArtist = metadata.AlbumArtist
 	result.ISRC = metadata.ISRC
 	result.TrackNumber = metadata.TrackNumber
+	result.TotalTracks = metadata.TotalTracks
 	result.DiscNumber = metadata.DiscNumber
+	result.TotalDiscs = metadata.TotalDiscs
 	result.Genre = metadata.Genre
 	result.ReleaseDate = metadata.Date
+	result.Composer = metadata.Composer
 	result.Label = metadata.Label
 	result.Copyright = metadata.Copyright
 
@@ -511,13 +526,16 @@ func scanAPEFile(filePath string, result *LibraryScanResult, displayNameHint str
 	result.AlbumArtist = metadata.AlbumArtist
 	result.ISRC = metadata.ISRC
 	result.TrackNumber = metadata.TrackNumber
+	result.TotalTracks = metadata.TotalTracks
 	result.DiscNumber = metadata.DiscNumber
+	result.TotalDiscs = metadata.TotalDiscs
 	result.Genre = metadata.Genre
 	if metadata.Date != "" {
 		result.ReleaseDate = metadata.Date
 	} else {
 		result.ReleaseDate = metadata.Year
 	}
+	result.Composer = metadata.Composer
 	result.Label = metadata.Label
 	result.Copyright = metadata.Copyright
 

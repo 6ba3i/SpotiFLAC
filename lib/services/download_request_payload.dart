@@ -17,6 +17,7 @@ class DownloadRequestPayload {
   final int trackNumber;
   final int discNumber;
   final int totalTracks;
+  final int totalDiscs;
   final String releaseDate;
   final String itemId;
   final int durationMs;
@@ -24,6 +25,7 @@ class DownloadRequestPayload {
   final String genre;
   final String label;
   final String copyright;
+  final String composer;
   final String tidalId;
   final String qobuzId;
   final String deezerId;
@@ -56,6 +58,7 @@ class DownloadRequestPayload {
     this.trackNumber = 0,
     this.discNumber = 0,
     this.totalTracks = 1,
+    this.totalDiscs = 0,
     this.releaseDate = '',
     this.itemId = '',
     this.durationMs = 0,
@@ -63,6 +66,7 @@ class DownloadRequestPayload {
     this.genre = '',
     this.label = '',
     this.copyright = '',
+    this.composer = '',
     this.tidalId = '',
     this.qobuzId = '',
     this.deezerId = '',
@@ -97,6 +101,7 @@ class DownloadRequestPayload {
       'track_number': trackNumber,
       'disc_number': discNumber,
       'total_tracks': totalTracks,
+      'total_discs': totalDiscs,
       'release_date': releaseDate,
       'item_id': itemId,
       'duration_ms': durationMs,
@@ -104,6 +109,7 @@ class DownloadRequestPayload {
       'genre': genre,
       'label': label,
       'copyright': copyright,
+      'composer': composer,
       'tidal_id': tidalId,
       'qobuz_id': qobuzId,
       'deezer_id': deezerId,
@@ -142,6 +148,7 @@ class DownloadRequestPayload {
       trackNumber: trackNumber,
       discNumber: discNumber,
       totalTracks: totalTracks,
+      totalDiscs: totalDiscs,
       releaseDate: releaseDate,
       itemId: itemId,
       durationMs: durationMs,
@@ -149,6 +156,7 @@ class DownloadRequestPayload {
       genre: genre,
       label: label,
       copyright: copyright,
+      composer: composer,
       tidalId: tidalId,
       qobuzId: qobuzId,
       deezerId: deezerId,

@@ -630,6 +630,12 @@ func (c *DeezerClient) GetAlbum(ctx context.Context, albumID string) (*AlbumResp
 	}
 
 	isrcMap := c.fetchISRCsParallel(ctx, allTracks)
+	totalDiscs := 0
+	for _, track := range allTracks {
+		if track.DiskNumber > totalDiscs {
+			totalDiscs = track.DiskNumber
+		}
+	}
 
 	tracks := make([]AlbumTrackMetadata, 0, len(allTracks))
 	albumType := album.RecordType
@@ -658,6 +664,7 @@ func (c *DeezerClient) GetAlbum(ctx context.Context, albumID string) (*AlbumResp
 			TrackNumber: trackNum,
 			TotalTracks: album.NbTracks,
 			DiscNumber:  track.DiskNumber,
+			TotalDiscs:  totalDiscs,
 			ExternalURL: track.Link,
 			ISRC:        isrc,
 			AlbumID:     fmt.Sprintf("deezer:%d", album.ID),

@@ -23,11 +23,13 @@ type TrackMetadata struct {
 	TrackNumber int    `json:"track_number"`
 	TotalTracks int    `json:"total_tracks,omitempty"`
 	DiscNumber  int    `json:"disc_number,omitempty"`
+	TotalDiscs  int    `json:"total_discs,omitempty"`
 	ExternalURL string `json:"external_urls"`
 	ISRC        string `json:"isrc"`
 	AlbumID     string `json:"album_id,omitempty"`
 	ArtistID    string `json:"artist_id,omitempty"`
 	AlbumType   string `json:"album_type,omitempty"`
+	Composer    string `json:"composer,omitempty"`
 }
 
 type AlbumTrackMetadata struct {
@@ -42,11 +44,13 @@ type AlbumTrackMetadata struct {
 	TrackNumber int    `json:"track_number"`
 	TotalTracks int    `json:"total_tracks,omitempty"`
 	DiscNumber  int    `json:"disc_number,omitempty"`
+	TotalDiscs  int    `json:"total_discs,omitempty"`
 	ExternalURL string `json:"external_urls"`
 	ISRC        string `json:"isrc"`
 	AlbumID     string `json:"album_id,omitempty"`
 	AlbumURL    string `json:"album_url,omitempty"`
 	AlbumType   string `json:"album_type,omitempty"`
+	Composer    string `json:"composer,omitempty"`
 }
 
 type AlbumInfoMetadata struct {

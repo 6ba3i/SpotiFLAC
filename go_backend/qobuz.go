@@ -1030,6 +1030,7 @@ func (q *QobuzDownloader) GetAlbumMetadata(resourceID string) (*AlbumResponsePay
 	}
 
 	tracks := make([]AlbumTrackMetadata, 0, len(album.Tracks.Items))
+	totalDiscs := 0
 	for i := range album.Tracks.Items {
 		track := &album.Tracks.Items[i]
 		track.Album.ID = album.ID
@@ -1041,7 +1042,13 @@ func (q *QobuzDownloader) GetAlbumMetadata(resourceID string) (*AlbumResponsePay
 			Large:     album.Image.Large,
 		}
 		track.Album.TracksCount = album.TracksCount
+		if track.MediaNumber > totalDiscs {
+			totalDiscs = track.MediaNumber
+		}
 		tracks = append(tracks, qobuzTrackToAlbumTrackMetadata(track))
+	}
+	for i := range tracks {
+		tracks[i].TotalDiscs = totalDiscs
 	}
 
 	return &AlbumResponsePayload{
@@ -2793,10 +2800,12 @@ func downloadFromQobuz(req DownloadRequest) (QobuzDownloadResult, error) {
 		TrackNumber:   actualTrackNumber,
 		TotalTracks:   req.TotalTracks,
 		DiscNumber:    req.DiscNumber,
+		TotalDiscs:    req.TotalDiscs,
 		ISRC:          track.ISRC,
 		Genre:         req.Genre,
 		Label:         req.Label,
 		Copyright:     req.Copyright,
+		Composer:      req.Composer,
 	}
 
 	var coverData []byte

@@ -513,6 +513,11 @@ func scanCueSheetForLibrary(cuePath string, sheet *CueSheet, audioPath, virtualP
 			album = "Unknown Album"
 		}
 
+		composer := track.Composer
+		if composer == "" {
+			composer = sheet.Composer
+		}
+
 		var duration int
 		if i+1 < len(sheet.Tracks) {
 			nextStart := sheet.Tracks[i+1].StartTime
@@ -539,12 +544,15 @@ func scanCueSheetForLibrary(cuePath string, sheet *CueSheet, audioPath, virtualP
 			ScannedAt:   scanTime,
 			ISRC:        track.ISRC,
 			TrackNumber: track.Number,
+			TotalTracks: len(sheet.Tracks),
 			DiscNumber:  1,
+			TotalDiscs:  1,
 			Duration:    duration,
 			ReleaseDate: sheet.Date,
 			BitDepth:    bitDepth,
 			SampleRate:  sampleRate,
 			Genre:       sheet.Genre,
+			Composer:    composer,
 			Format:      "cue+" + strings.TrimPrefix(audioExt, "."),
 		}
 

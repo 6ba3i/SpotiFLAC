@@ -21,7 +21,9 @@ type AudioMetadata struct {
 	Year        string
 	Date        string
 	TrackNumber int
+	TotalTracks int
 	DiscNumber  int
+	TotalDiscs  int
 	ISRC        string
 	Lyrics      string
 	Label       string
@@ -173,9 +175,9 @@ func parseID3v22Frames(data []byte, metadata *AudioMetadata, tagUnsync bool) {
 		case "TCO":
 			metadata.Genre = cleanGenre(value)
 		case "TRK":
-			metadata.TrackNumber = parseTrackNumber(value)
+			metadata.TrackNumber, metadata.TotalTracks = parseIndexPair(value)
 		case "TPA":
-			metadata.DiscNumber = parseTrackNumber(value)
+			metadata.DiscNumber, metadata.TotalDiscs = parseIndexPair(value)
 		case "TCM":
 			metadata.Composer = value
 		case "TPB":
@@ -292,9 +294,9 @@ func parseID3v23Frames(data []byte, metadata *AudioMetadata, version byte, tagUn
 		case "TCON":
 			metadata.Genre = cleanGenre(value)
 		case "TRCK":
-			metadata.TrackNumber = parseTrackNumber(value)
+			metadata.TrackNumber, metadata.TotalTracks = parseIndexPair(value)
 		case "TPOS":
-			metadata.DiscNumber = parseTrackNumber(value)
+			metadata.DiscNumber, metadata.TotalDiscs = parseIndexPair(value)
 		case "TSRC":
 			metadata.ISRC = value
 		case "TCOM":
@@ -580,12 +582,26 @@ func cleanGenre(genre string) string {
 }
 
 func parseTrackNumber(s string) int {
-	s = strings.TrimSpace(s)
-	if idx := strings.Index(s, "/"); idx > 0 {
-		s = s[:idx]
-	}
-	num, _ := strconv.Atoi(s)
+	num, _ := parseIndexPair(s)
 	return num
+}
+
+func parseIndexPair(s string) (int, int) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, 0
+	}
+
+	first := s
+	second := ""
+	if idx := strings.Index(s, "/"); idx > 0 {
+		first = s[:idx]
+		second = s[idx+1:]
+	}
+
+	num, _ := strconv.Atoi(strings.TrimSpace(first))
+	total, _ := strconv.Atoi(strings.TrimSpace(second))
+	return num, total
 }
 
 func removeUnsync(data []byte) []byte {
@@ -1037,9 +1053,9 @@ func parseVorbisComments(data []byte, metadata *AudioMetadata) {
 		case "GENRE":
 			metadata.Genre = value
 		case "TRACKNUMBER", "TRACK":
-			metadata.TrackNumber = parseTrackNumber(value)
+			metadata.TrackNumber, metadata.TotalTracks = parseIndexPair(value)
 		case "DISCNUMBER", "DISC":
-			metadata.DiscNumber = parseTrackNumber(value)
+			metadata.DiscNumber, metadata.TotalDiscs = parseIndexPair(value)
 		case "ISRC":
 			metadata.ISRC = value
 		case "COMPOSER":
