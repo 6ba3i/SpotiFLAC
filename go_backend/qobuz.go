@@ -59,6 +59,13 @@ const (
 	qobuzDeebAPIURL         = "https://dab.yeet.su/api/stream?trackId="
 	qobuzAfkarAPIURL        = "https://qbz.afkarxyz.qzz.io/api/track/"
 	qobuzSquidAPIURL        = "https://qobuz.squid.wtf/api/download-music?country=US&track_id="
+
+	qobuzFallbackAPIBaseURL         = "https://api.zarz.moe/v1/qbz2/"
+	qobuzFallbackTrackGetBaseURL    = qobuzFallbackAPIBaseURL + "track/get?track_id="
+	qobuzFallbackTrackSearchBaseURL = qobuzFallbackAPIBaseURL + "track/search?query="
+	qobuzFallbackAlbumGetBaseURL    = qobuzFallbackAPIBaseURL + "album/get?album_id="
+	qobuzFallbackArtistGetBaseURL   = qobuzFallbackAPIBaseURL + "artist/get?artist_id="
+	qobuzFallbackPlaylistGetBaseURL = qobuzFallbackAPIBaseURL + "playlist/get?playlist_id="
 )
 
 var qobuzStoreTrackIDRegex = regexp.MustCompile(`/v4/ajax/popin-add-cart/track/([0-9]+)`)
@@ -778,12 +785,21 @@ func (q *QobuzDownloader) GetTrackByID(trackID int64) (*QobuzTrack, error) {
 
 	resp, err := DoRequestWithUserAgent(q.client, req)
 	if err != nil {
+		if isQobuzPrimaryUnavailable(err) {
+			GoLog("[Qobuz] Primary API unavailable for track %d, trying qbz2 fallback: %v\n", trackID, err)
+			return q.getTrackByIDViaMusicDL(trackID)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("get track failed: HTTP %d", resp.StatusCode)
+		primaryErr := fmt.Errorf("get track failed: HTTP %d", resp.StatusCode)
+		if isQobuzPrimaryUnavailable(primaryErr) {
+			GoLog("[Qobuz] Primary API unavailable for track %d, trying qbz2 fallback: %v\n", trackID, primaryErr)
+			return q.getTrackByIDViaMusicDL(trackID)
+		}
+		return nil, primaryErr
 	}
 
 	var track QobuzTrack
@@ -791,6 +807,16 @@ func (q *QobuzDownloader) GetTrackByID(trackID int64) (*QobuzTrack, error) {
 		return nil, err
 	}
 
+	return &track, nil
+}
+
+func (q *QobuzDownloader) getTrackByIDViaMusicDL(trackID int64) (*QobuzTrack, error) {
+	requestURL := fmt.Sprintf("%s%d", qobuzFallbackTrackGetBaseURL, trackID)
+	var track QobuzTrack
+	if err := q.getQobuzJSON(requestURL, &track); err != nil {
+		return nil, fmt.Errorf("qbz2 fallback also failed for track %d: %w", trackID, err)
+	}
+	GoLog("[Qobuz] qbz2 fallback succeeded for track %d\n", trackID)
 	return &track, nil
 }
 
@@ -834,6 +860,25 @@ func (q *QobuzDownloader) getQobuzBody(requestURL string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
+func isQobuzPrimaryUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "HTTP 429") ||
+		strings.Contains(errStr, "HTTP 5") ||
+		strings.Contains(errStr, "rate limit") ||
+		strings.Contains(errStr, "connection refused") ||
+		strings.Contains(errStr, "no such host") ||
+		strings.Contains(errStr, "i/o timeout") ||
+		strings.Contains(errStr, "deadline exceeded") ||
+		strings.Contains(errStr, "EOF") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "TLS handshake") ||
+		strings.Contains(errStr, "server misbehaving") ||
+		strings.Contains(errStr, "network is unreachable")
+}
+
 func extractQobuzAlbumIDsFromArtistHTML(body []byte) []string {
 	matches := qobuzArtistAlbumIDRegex.FindAllSubmatch(body, -1)
 	if len(matches) == 0 {
@@ -863,8 +908,22 @@ func (q *QobuzDownloader) getAlbumDetails(albumID string) (*qobuzAlbumDetails, e
 	requestURL := fmt.Sprintf("%s%s&app_id=%s", qobuzAlbumGetBaseURL, url.QueryEscape(strings.TrimSpace(albumID)), q.appID)
 	var album qobuzAlbumDetails
 	if err := q.getQobuzJSON(requestURL, &album); err != nil {
+		if isQobuzPrimaryUnavailable(err) {
+			GoLog("[Qobuz] Primary API unavailable for album %s, trying qbz2 fallback: %v\n", albumID, err)
+			return q.getAlbumDetailsViaMusicDL(albumID)
+		}
 		return nil, err
 	}
+	return &album, nil
+}
+
+func (q *QobuzDownloader) getAlbumDetailsViaMusicDL(albumID string) (*qobuzAlbumDetails, error) {
+	requestURL := fmt.Sprintf("%s%s", qobuzFallbackAlbumGetBaseURL, url.QueryEscape(strings.TrimSpace(albumID)))
+	var album qobuzAlbumDetails
+	if err := q.getQobuzJSON(requestURL, &album); err != nil {
+		return nil, fmt.Errorf("qbz2 fallback also failed for album %s: %w", albumID, err)
+	}
+	GoLog("[Qobuz] qbz2 fallback succeeded for album %s\n", albumID)
 	return &album, nil
 }
 
@@ -872,8 +931,22 @@ func (q *QobuzDownloader) getArtistDetails(artistID string) (*qobuzArtistDetails
 	requestURL := fmt.Sprintf("%s%s&app_id=%s", qobuzArtistGetBaseURL, url.QueryEscape(strings.TrimSpace(artistID)), q.appID)
 	var artist qobuzArtistDetails
 	if err := q.getQobuzJSON(requestURL, &artist); err != nil {
+		if isQobuzPrimaryUnavailable(err) {
+			GoLog("[Qobuz] Primary API unavailable for artist %s, trying qbz2 fallback: %v\n", artistID, err)
+			return q.getArtistDetailsViaMusicDL(artistID)
+		}
 		return nil, err
 	}
+	return &artist, nil
+}
+
+func (q *QobuzDownloader) getArtistDetailsViaMusicDL(artistID string) (*qobuzArtistDetails, error) {
+	requestURL := fmt.Sprintf("%s%s", qobuzFallbackArtistGetBaseURL, url.QueryEscape(strings.TrimSpace(artistID)))
+	var artist qobuzArtistDetails
+	if err := q.getQobuzJSON(requestURL, &artist); err != nil {
+		return nil, fmt.Errorf("qbz2 fallback also failed for artist %s: %w", artistID, err)
+	}
+	GoLog("[Qobuz] qbz2 fallback succeeded for artist %s\n", artistID)
 	return &artist, nil
 }
 
@@ -888,8 +961,28 @@ func (q *QobuzDownloader) getPlaylistDetailsPage(playlistID string, limit, offse
 	)
 	var playlist qobuzPlaylistDetails
 	if err := q.getQobuzJSON(requestURL, &playlist); err != nil {
+		if isQobuzPrimaryUnavailable(err) {
+			GoLog("[Qobuz] Primary API unavailable for playlist %s, trying qbz2 fallback: %v\n", playlistID, err)
+			return q.getPlaylistDetailsPageViaMusicDL(playlistID, limit, offset)
+		}
 		return nil, err
 	}
+	return &playlist, nil
+}
+
+func (q *QobuzDownloader) getPlaylistDetailsPageViaMusicDL(playlistID string, limit, offset int) (*qobuzPlaylistDetails, error) {
+	requestURL := fmt.Sprintf(
+		"%s%s&limit=%d&offset=%d",
+		qobuzFallbackPlaylistGetBaseURL,
+		url.QueryEscape(strings.TrimSpace(playlistID)),
+		limit,
+		offset,
+	)
+	var playlist qobuzPlaylistDetails
+	if err := q.getQobuzJSON(requestURL, &playlist); err != nil {
+		return nil, fmt.Errorf("qbz2 fallback also failed for playlist %s: %w", playlistID, err)
+	}
+	GoLog("[Qobuz] qbz2 fallback succeeded for playlist %s (offset=%d)\n", playlistID, offset)
 	return &playlist, nil
 }
 
@@ -1361,6 +1454,7 @@ func (q *QobuzDownloader) SearchAll(query string, trackLimit, artistLimit int, f
 		searchURL := fmt.Sprintf("%sartist/search?query=%s&limit=%d&app_id=%s",
 			qobuzAPIBaseURL, url.QueryEscape(cleanQuery), artistLimit, q.appID)
 		req, err := http.NewRequest("GET", searchURL, nil)
+		artistSearchDone := false
 		if err == nil {
 			resp, reqErr := DoRequestWithUserAgent(q.client, req)
 			if reqErr == nil {
@@ -1385,13 +1479,22 @@ func (q *QobuzDownloader) SearchAll(query string, trackLimit, artistLimit int, f
 								Images: imageURL,
 							})
 						}
+						artistSearchDone = true
 					} else {
 						GoLog("[Qobuz] Artist search decode failed: %v\n", decErr)
 					}
+				} else if isQobuzPrimaryUnavailable(fmt.Errorf("HTTP %d", resp.StatusCode)) {
+					GoLog("[Qobuz] Artist search primary API returned HTTP %d, will try qbz2 fallback\n", resp.StatusCode)
 				}
 			} else {
 				GoLog("[Qobuz] Artist search request failed: %v\n", reqErr)
+				if isQobuzPrimaryUnavailable(reqErr) {
+					GoLog("[Qobuz] Primary API unavailable for artist search, will try qbz2 fallback\n")
+				}
 			}
+		}
+		if !artistSearchDone {
+			q.searchAllArtistsViaMusicDL(cleanQuery, artistLimit, result)
 		}
 	}
 
@@ -1399,6 +1502,7 @@ func (q *QobuzDownloader) SearchAll(query string, trackLimit, artistLimit int, f
 		searchURL := fmt.Sprintf("%salbum/search?query=%s&limit=%d&app_id=%s",
 			qobuzAPIBaseURL, url.QueryEscape(cleanQuery), albumLimit, q.appID)
 		req, err := http.NewRequest("GET", searchURL, nil)
+		albumSearchDone := false
 		if err == nil {
 			resp, reqErr := DoRequestWithUserAgent(q.client, req)
 			if reqErr == nil {
@@ -1423,18 +1527,79 @@ func (q *QobuzDownloader) SearchAll(query string, trackLimit, artistLimit int, f
 								AlbumType:   qobuzNormalizeAlbumType(album.ReleaseType, album.ProductType, album.TracksCount),
 							})
 						}
+						albumSearchDone = true
 					} else {
 						GoLog("[Qobuz] Album search decode failed: %v\n", decErr)
 					}
+				} else if isQobuzPrimaryUnavailable(fmt.Errorf("HTTP %d", resp.StatusCode)) {
+					GoLog("[Qobuz] Album search primary API returned HTTP %d, will try qbz2 fallback\n", resp.StatusCode)
 				}
 			} else {
 				GoLog("[Qobuz] Album search request failed: %v\n", reqErr)
+				if isQobuzPrimaryUnavailable(reqErr) {
+					GoLog("[Qobuz] Primary API unavailable for album search, will try qbz2 fallback\n")
+				}
 			}
+		}
+		if !albumSearchDone {
+			q.searchAllAlbumsViaMusicDL(cleanQuery, albumLimit, result)
 		}
 	}
 
 	GoLog("[Qobuz] SearchAll complete: %d tracks, %d artists, %d albums\n", len(result.Tracks), len(result.Artists), len(result.Albums))
 	return result, nil
+}
+
+func (q *QobuzDownloader) searchAllArtistsViaMusicDL(query string, limit int, result *SearchAllResult) {
+	requestURL := fmt.Sprintf("%sartist/search?query=%s&limit=%d", qobuzFallbackAPIBaseURL, url.QueryEscape(query), limit)
+	var searchResp struct {
+		Artists struct {
+			Items []struct {
+				ID    int64         `json:"id"`
+				Name  string        `json:"name"`
+				Image qobuzImageSet `json:"image"`
+			} `json:"items"`
+		} `json:"artists"`
+	}
+	if err := q.getQobuzJSON(requestURL, &searchResp); err != nil {
+		GoLog("[Qobuz] qbz2 fallback artist search also failed: %v\n", err)
+		return
+	}
+	GoLog("[Qobuz] qbz2 fallback artist search succeeded: %d artists\n", len(searchResp.Artists.Items))
+	for _, artist := range searchResp.Artists.Items {
+		imageURL := qobuzFirstNonEmpty(artist.Image.Large, artist.Image.Small, artist.Image.Thumbnail)
+		result.Artists = append(result.Artists, SearchArtistResult{
+			ID:     qobuzPrefixedNumericID(artist.ID),
+			Name:   strings.TrimSpace(artist.Name),
+			Images: imageURL,
+		})
+	}
+}
+
+func (q *QobuzDownloader) searchAllAlbumsViaMusicDL(query string, limit int, result *SearchAllResult) {
+	requestURL := fmt.Sprintf("%salbum/search?query=%s&limit=%d", qobuzFallbackAPIBaseURL, url.QueryEscape(query), limit)
+	var searchResp struct {
+		Albums struct {
+			Items []qobuzAlbumDetails `json:"items"`
+		} `json:"albums"`
+	}
+	if err := q.getQobuzJSON(requestURL, &searchResp); err != nil {
+		GoLog("[Qobuz] qbz2 fallback album search also failed: %v\n", err)
+		return
+	}
+	GoLog("[Qobuz] qbz2 fallback album search succeeded: %d albums\n", len(searchResp.Albums.Items))
+	for i := range searchResp.Albums.Items {
+		album := &searchResp.Albums.Items[i]
+		result.Albums = append(result.Albums, SearchAlbumResult{
+			ID:          qobuzPrefixedID(album.ID),
+			Name:        strings.TrimSpace(album.Title),
+			Artists:     qobuzArtistsDisplayName(album.Artists, album.Artist.Name),
+			Images:      qobuzAlbumImage(album),
+			ReleaseDate: qobuzNormalizeReleaseDate(album.ReleaseDateOriginal),
+			TotalTracks: album.TracksCount,
+			AlbumType:   qobuzNormalizeAlbumType(album.ReleaseType, album.ProductType, album.TracksCount),
+		})
+	}
 }
 
 func (q *QobuzDownloader) SearchTrackByMetadataWithDuration(trackName, artistName string, expectedDurationSec int) (*QobuzTrack, error) {
@@ -1628,13 +1793,22 @@ func (q *QobuzDownloader) searchQobuzTracksViaAPI(query string, limit int) ([]Qo
 
 	resp, err := DoRequestWithUserAgent(q.client, req)
 	if err != nil {
+		if isQobuzPrimaryUnavailable(err) {
+			GoLog("[Qobuz] Primary API unavailable for track search, trying qbz2 fallback: %v\n", err)
+			return q.searchQobuzTracksViaMusicDL(query, limit)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("search failed: HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(string(body)))
+		primaryErr := fmt.Errorf("search failed: HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(string(body)))
+		if isQobuzPrimaryUnavailable(primaryErr) {
+			GoLog("[Qobuz] Primary API unavailable for track search, trying qbz2 fallback: %v\n", primaryErr)
+			return q.searchQobuzTracksViaMusicDL(query, limit)
+		}
+		return nil, primaryErr
 	}
 
 	var result struct {
@@ -1645,6 +1819,20 @@ func (q *QobuzDownloader) searchQobuzTracksViaAPI(query string, limit int) ([]Qo
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
+	return result.Tracks.Items, nil
+}
+
+func (q *QobuzDownloader) searchQobuzTracksViaMusicDL(query string, limit int) ([]QobuzTrack, error) {
+	requestURL := fmt.Sprintf("%s%s&limit=%d", qobuzFallbackTrackSearchBaseURL, url.QueryEscape(query), limit)
+	var result struct {
+		Tracks struct {
+			Items []QobuzTrack `json:"items"`
+		} `json:"tracks"`
+	}
+	if err := q.getQobuzJSON(requestURL, &result); err != nil {
+		return nil, fmt.Errorf("qbz2 fallback search also failed: %w", err)
+	}
+	GoLog("[Qobuz] qbz2 fallback search succeeded: %d tracks for '%s'\n", len(result.Tracks.Items), query)
 	return result.Tracks.Items, nil
 }
 
@@ -1851,13 +2039,22 @@ func (q *QobuzDownloader) searchQobuzTracksViaAlbumSearch(query string, limit in
 
 	resp, err := DoRequestWithUserAgent(q.client, req)
 	if err != nil {
+		if isQobuzPrimaryUnavailable(err) {
+			GoLog("[Qobuz] Primary API unavailable for album search fallback, trying qbz2: %v\n", err)
+			return q.searchQobuzTracksViaAlbumSearchMusicDL(query, limit, albumLimit)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("album search failed: HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(string(body)))
+		primaryErr := fmt.Errorf("album search failed: HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(string(body)))
+		if isQobuzPrimaryUnavailable(primaryErr) {
+			GoLog("[Qobuz] Primary API unavailable for album search fallback, trying qbz2: %v\n", primaryErr)
+			return q.searchQobuzTracksViaAlbumSearchMusicDL(query, limit, albumLimit)
+		}
+		return nil, primaryErr
 	}
 
 	var albumResp struct {
@@ -1873,6 +2070,25 @@ func (q *QobuzDownloader) searchQobuzTracksViaAlbumSearch(query string, limit in
 		query,
 		limit,
 		albumResp.Albums.Items,
+		q.getAlbumDetails,
+	)
+}
+
+func (q *QobuzDownloader) searchQobuzTracksViaAlbumSearchMusicDL(query string, limit, albumLimit int) ([]QobuzTrack, error) {
+	requestURL := fmt.Sprintf("%salbum/search?query=%s&limit=%d", qobuzFallbackAPIBaseURL, url.QueryEscape(strings.TrimSpace(query)), albumLimit)
+	var searchResp struct {
+		Albums struct {
+			Items []qobuzAlbumDetails `json:"items"`
+		} `json:"albums"`
+	}
+	if err := q.getQobuzJSON(requestURL, &searchResp); err != nil {
+		return nil, fmt.Errorf("qbz2 fallback album search also failed: %w", err)
+	}
+	GoLog("[Qobuz] qbz2 fallback album search returned %d albums\n", len(searchResp.Albums.Items))
+	return selectQobuzTracksFromAlbumSearchResults(
+		query,
+		limit,
+		searchResp.Albums.Items,
 		q.getAlbumDetails,
 	)
 }
