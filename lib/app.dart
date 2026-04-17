@@ -72,7 +72,7 @@ class SpotiFLACApp extends ConsumerWidget {
     return DynamicColorWrapper(
       builder: (lightTheme, darkTheme, themeMode) {
         return MaterialApp.router(
-          title: 'SpotiFLAC',
+          title: 'spotify+',
           debugShowCheckedModeBanner: false,
           theme: lightTheme,
           darkTheme: darkTheme,

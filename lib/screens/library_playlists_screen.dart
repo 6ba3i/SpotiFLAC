@@ -23,7 +23,8 @@ class LibraryPlaylistsScreen extends ConsumerStatefulWidget {
       _LibraryPlaylistsScreenState();
 }
 
-class _LibraryPlaylistsScreenState extends ConsumerState<LibraryPlaylistsScreen> {
+class _LibraryPlaylistsScreenState
+    extends ConsumerState<LibraryPlaylistsScreen> {
   bool _reorderMode = false;
 
   @override
@@ -34,7 +35,9 @@ class _LibraryPlaylistsScreenState extends ConsumerState<LibraryPlaylistsScreen>
     final historyItems = ref.watch(
       downloadHistoryProvider.select((state) => state.items),
     );
-    final localItems = ref.watch(localLibraryProvider.select((state) => state.items));
+    final localItems = ref.watch(
+      localLibraryProvider.select((state) => state.items),
+    );
     final downloadedKeys = <String>{
       for (final item in historyItems) _downloadHistoryCollectionKey(item),
     };
@@ -237,7 +240,9 @@ class _LibraryPlaylistsScreenState extends ConsumerState<LibraryPlaylistsScreen>
   String _downloadHistoryCollectionKey(DownloadHistoryItem item) {
     final isrc = item.isrc?.trim();
     if (isrc != null && isrc.isNotEmpty) return 'isrc:${isrc.toUpperCase()}';
-    final source = item.service.trim().isNotEmpty ? item.service.trim() : 'builtin';
+    final source = item.service.trim().isNotEmpty
+        ? item.service.trim()
+        : 'builtin';
     return '$source:${item.id}';
   }
 
@@ -386,12 +391,10 @@ class _LibraryPlaylistsScreenState extends ConsumerState<LibraryPlaylistsScreen>
             ),
 
             BottomSheetOptionTile(
-              icon: isPinned
-                  ? Icons.push_pin_rounded
-                  : Icons.push_pin_outlined,
+              icon: isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
               title: isPinned
-                  ? context.l10n.collectionUnpin
-                  : context.l10n.collectionPinToTop,
+                  ? context.l10n.collectionRemoveFromHome
+                  : context.l10n.collectionAddToHome,
               onTap: () {
                 Navigator.pop(sheetContext);
                 ref

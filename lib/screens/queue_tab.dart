@@ -1801,20 +1801,75 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     });
   }
 
+  bool _isTrackAvailableLocally(
+    Track track,
+    DownloadHistoryState historyState,
+    LocalLibraryState localState,
+  ) {
+    final normalizedIsrc = track.isrc?.trim();
+    final inHistory =
+        historyState.isDownloaded(track.id) ||
+        (normalizedIsrc != null &&
+            normalizedIsrc.isNotEmpty &&
+            historyState.getByIsrc(normalizedIsrc) != null) ||
+        historyState.findByTrackAndArtist(track.name, track.artistName) != null;
+    if (inHistory) return true;
+
+    return localState.existsInLibrary(
+      isrc: normalizedIsrc,
+      trackName: track.name,
+      artistName: track.artistName,
+    );
+  }
+
   Future<void> _downloadAllSelectedPlaylists(BuildContext context) async {
     final collectionsState = ref.read(libraryCollectionsProvider);
     final selectedPlaylists = collectionsState.playlists
         .where((p) => _selectedPlaylistIds.contains(p.id))
         .toList();
 
-    final totalTracks = selectedPlaylists.fold<int>(
-      0,
-      (sum, p) => sum + p.tracks.length,
-    );
-
-    if (totalTracks == 0) {
+    if (selectedPlaylists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarSelectedPlaylistsEmpty)),
+      );
+      return;
+    }
+
+    final historyState = ref.read(downloadHistoryProvider);
+    final localState = ref.read(localLibraryProvider);
+    final playlistTracksToQueue = <UserPlaylistCollection, List<Track>>{};
+    var selectedTrackCount = 0;
+    var skippedExistingCount = 0;
+
+    for (final playlist in selectedPlaylists) {
+      final tracks = playlist.tracks
+          .map((e) => e.track)
+          .toList(growable: false);
+      selectedTrackCount += tracks.length;
+      final missingTracks = tracks
+          .where(
+            (track) =>
+                !_isTrackAvailableLocally(track, historyState, localState),
+          )
+          .toList(growable: false);
+      skippedExistingCount += tracks.length - missingTracks.length;
+      if (missingTracks.isNotEmpty) {
+        playlistTracksToQueue[playlist] = missingTracks;
+      }
+    }
+
+    final totalTracksToQueue = playlistTracksToQueue.values.fold<int>(
+      0,
+      (sum, tracks) => sum + tracks.length,
+    );
+
+    if (totalTracksToQueue == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.discographySkippedDownloaded(0, selectedTrackCount),
+          ),
+        ),
       );
       return;
     }
@@ -1825,7 +1880,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         title: Text(ctx.l10n.dialogDownloadAllTitle),
         content: Text(
           ctx.l10n.dialogDownloadPlaylistsMessage(
-            totalTracks,
+            totalTracksToQueue,
             selectedPlaylists.length,
           ),
         ),
@@ -1849,8 +1904,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
     void enqueueAll({String? qualityOverride, String? service}) {
       final svc = service ?? settings.defaultService;
-      for (final playlist in selectedPlaylists) {
-        final tracks = playlist.tracks.map((e) => e.track).toList();
+      for (final entry in playlistTracksToQueue.entries) {
+        final playlist = entry.key;
+        final tracks = entry.value;
         queueNotifier.addMultipleToQueue(
           tracks,
           svc,
@@ -1863,29 +1919,35 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     if (settings.askQualityBeforeDownload) {
       DownloadServicePicker.show(
         context,
-        trackName: context.l10n.tracksCount(totalTracks),
+        trackName: context.l10n.tracksCount(totalTracksToQueue),
         artistName: context.l10n.playlistsCount(selectedPlaylists.length),
         onSelect: (quality, service) {
           enqueueAll(qualityOverride: quality, service: service);
           if (!mounted) return;
           _exitPlaylistSelectionMode();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                context.l10n.snackbarAddedTracksToQueue(totalTracks),
-              ),
-            ),
-          );
+          final message = skippedExistingCount > 0
+              ? context.l10n.discographySkippedDownloaded(
+                  totalTracksToQueue,
+                  skippedExistingCount,
+                )
+              : context.l10n.snackbarAddedTracksToQueue(totalTracksToQueue);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
         },
       );
     } else {
       enqueueAll();
       _exitPlaylistSelectionMode();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.snackbarAddedTracksToQueue(totalTracks)),
-        ),
-      );
+      final message = skippedExistingCount > 0
+          ? context.l10n.discographySkippedDownloaded(
+              totalTracksToQueue,
+              skippedExistingCount,
+            )
+          : context.l10n.snackbarAddedTracksToQueue(totalTracksToQueue);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -1956,7 +2018,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding > 0 ? 8 : 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -6096,7 +6158,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding > 0 ? 8 : 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,

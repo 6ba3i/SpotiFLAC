@@ -30,6 +30,8 @@ class DownloadItem {
   final DateTime createdAt;
   final String? qualityOverride; // Override quality for this specific download
   final String? playlistName; // Playlist context for folder organization
+  final String?
+  playlistLinkKey; // Stable remote playlist identity for mirroring
 
   const DownloadItem({
     required this.id,
@@ -46,6 +48,7 @@ class DownloadItem {
     required this.createdAt,
     this.qualityOverride,
     this.playlistName,
+    this.playlistLinkKey,
   });
 
   DownloadItem copyWith({
@@ -63,6 +66,7 @@ class DownloadItem {
     DateTime? createdAt,
     String? qualityOverride,
     String? playlistName,
+    String? playlistLinkKey,
   }) {
     return DownloadItem(
       id: id ?? this.id,
@@ -79,6 +83,7 @@ class DownloadItem {
       createdAt: createdAt ?? this.createdAt,
       qualityOverride: qualityOverride ?? this.qualityOverride,
       playlistName: playlistName ?? this.playlistName,
+      playlistLinkKey: playlistLinkKey ?? this.playlistLinkKey,
     );
   }
 

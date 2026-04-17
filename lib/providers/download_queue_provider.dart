@@ -11,6 +11,7 @@ import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
+import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/download_request_payload.dart';
@@ -2816,11 +2817,33 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     );
   }
 
+  Future<void> _mirrorTrackToLocalPlaylistIfNeeded(
+    DownloadItem item,
+    Track track,
+  ) async {
+    final linkKey = item.playlistLinkKey?.trim() ?? '';
+    final playlistName = item.playlistName?.trim() ?? '';
+    if (linkKey.isEmpty || playlistName.isEmpty) return;
+
+    try {
+      await ref
+          .read(libraryCollectionsProvider.notifier)
+          .mirrorDownloadedTrackToPlaylist(
+            linkKey: linkKey,
+            playlistName: playlistName,
+            track: track,
+          );
+    } catch (e) {
+      _log.w('Failed to mirror downloaded track into local playlist: $e');
+    }
+  }
+
   String addToQueue(
     Track track,
     String service, {
     String? qualityOverride,
     String? playlistName,
+    String? playlistLinkKey,
   }) {
     final settings = ref.read(settingsProvider);
     updateSettings(settings);
@@ -2834,6 +2857,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       createdAt: DateTime.now(),
       qualityOverride: qualityOverride,
       playlistName: playlistName,
+      playlistLinkKey: playlistLinkKey,
     );
 
     state = state.copyWith(items: [...state.items, item]);
@@ -2851,6 +2875,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     String service, {
     String? qualityOverride,
     String? playlistName,
+    String? playlistLinkKey,
   }) {
     final settings = ref.read(settingsProvider);
     updateSettings(settings);
@@ -2866,6 +2891,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         createdAt: DateTime.now(),
         qualityOverride: qualityOverride,
         playlistName: playlistName,
+        playlistLinkKey: playlistLinkKey,
       );
     }).toList();
 
@@ -5794,6 +5820,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
         if (wasExisting && existingInHistory != null) {
           _log.i('Track already in library, skipping history update');
+          await _mirrorTrackToLocalPlaylistIfNeeded(item, trackToDownload);
           await _notificationService.showDownloadComplete(
             trackName: item.track.name,
             artistName: item.track.artistName,
@@ -5964,6 +5991,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                   copyright: effectiveCopyright,
                 ),
               );
+
+          await _mirrorTrackToLocalPlaylistIfNeeded(item, trackToDownload);
 
           removeItem(item.id);
         }

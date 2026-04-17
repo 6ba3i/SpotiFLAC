@@ -16,6 +16,7 @@ import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/recent_access_provider.dart';
 import 'package:spotiflac_android/providers/explore_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
+import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/screens/album_screen.dart';
@@ -29,6 +30,7 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/screens/playlist_screen.dart';
 import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
+import 'package:spotiflac_android/screens/library_tracks_folder_screen.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
@@ -1276,15 +1278,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
     final screenHeight = mediaQuery.size.height;
     final topPadding = normalizedHeaderTopPadding(context);
     final historyItems = ref.watch(_homeHistoryPreviewProvider);
-    final playbackSnapshot = ref.watch(
-      playbackProvider.select(
-        (s) => (
-          currentItem: s.currentItem,
-          isPlaying: s.isPlaying,
-          position: s.position,
-          duration: s.duration,
-        ),
-      ),
+    final hasPlaybackItem = ref.watch(
+      playbackProvider.select((s) => s.currentItem != null),
     );
     final recentModeRequested = isShowingRecentAccess || isSearchFocused;
     final showRecentAccess =
@@ -1292,9 +1287,9 @@ class _HomeTabState extends ConsumerState<HomeTab>
         (!hasSearchInput || hasShortSearchInput || !hasActualResults) &&
         !isLoading;
     final canShowContinueCard =
-        !hasSearchInput &&
-        !showRecentAccess &&
-        playbackSnapshot.currentItem != null;
+        !hasSearchInput && !showRecentAccess && hasPlaybackItem;
+    final showPinnedCollections =
+        !hasSearchInput && !showRecentAccess && !hasActualResults;
     final hasResults =
         hasSearchInput || hasActualResults || isLoading || showRecentAccess;
     final showExplore =
@@ -1418,7 +1413,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'SpotiFLAC',
+                              'spotify+',
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),
@@ -1450,15 +1445,75 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
               if (canShowContinueCard)
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                    child: _buildContinueListeningCard(
-                      colorScheme,
-                      playbackSnapshot.currentItem!,
-                      playbackSnapshot.position,
-                      playbackSnapshot.duration,
-                      playbackSnapshot.isPlaying,
-                    ),
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final playbackSnapshot = ref.watch(
+                        playbackProvider.select(
+                          (s) => (
+                            currentItem: s.currentItem,
+                            isPlaying: s.isPlaying,
+                            position: s.position,
+                            duration: s.duration,
+                          ),
+                        ),
+                      );
+                      final item = playbackSnapshot.currentItem;
+                      if (item == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: _buildContinueListeningCard(
+                          colorScheme,
+                          item,
+                          playbackSnapshot.position,
+                          playbackSnapshot.duration,
+                          playbackSnapshot.isPlaying,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+              if (showPinnedCollections)
+                SliverToBoxAdapter(
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final pinnedCollectionIds = ref.watch(
+                        settingsProvider.select((s) => s.pinnedCollectionIds),
+                      );
+                      if (pinnedCollectionIds.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final playlists = ref.watch(
+                        libraryCollectionsProvider.select((s) => s.playlists),
+                      );
+                      if (playlists.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final playlistById = <String, UserPlaylistCollection>{
+                        for (final playlist in playlists) playlist.id: playlist,
+                      };
+                      final pinnedPlaylists = <UserPlaylistCollection>[];
+                      for (final rawKey in pinnedCollectionIds) {
+                        final playlistId = _playlistIdFromPinnedKey(rawKey);
+                        if (playlistId == null) continue;
+                        final playlist = playlistById[playlistId];
+                        if (playlist != null) {
+                          pinnedPlaylists.add(playlist);
+                        }
+                      }
+                      if (pinnedPlaylists.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return _buildPinnedCollectionsSection(
+                        colorScheme,
+                        pinnedPlaylists,
+                      );
+                    },
                   ),
                 ),
 
@@ -1754,7 +1809,10 @@ class _HomeTabState extends ConsumerState<HomeTab>
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(Icons.music_note_rounded, color: colorScheme.onSurfaceVariant),
+      child: Icon(
+        Icons.music_note_rounded,
+        color: colorScheme.onSurfaceVariant,
+      ),
     );
 
     if (cover.isEmpty) {
@@ -1785,6 +1843,158 @@ class _HomeTabState extends ConsumerState<HomeTab>
         memCacheHeight: 224,
         cacheManager: CoverCacheManager.instance,
         errorWidget: (_, _, _) => fallback,
+      ),
+    );
+  }
+
+  String? _playlistIdFromPinnedKey(String rawKey) {
+    const prefix = 'playlist:';
+    if (!rawKey.startsWith(prefix)) return null;
+    final playlistId = rawKey.substring(prefix.length).trim();
+    if (playlistId.isEmpty) return null;
+    return playlistId;
+  }
+
+  Widget _buildPinnedCollectionsSection(
+    ColorScheme colorScheme,
+    List<UserPlaylistCollection> playlists,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.homePinnedCollections,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 130,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: playlists.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final playlist = playlists[index];
+                return SizedBox(
+                  width: 108,
+                  child: Semantics(
+                    button: true,
+                    label:
+                        '${context.l10n.collectionPlaylist}: ${playlist.name}',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => LibraryTracksFolderScreen(
+                              mode: LibraryTracksFolderMode.playlist,
+                              playlistId: playlist.id,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildPinnedPlaylistCover(playlist, colorScheme),
+                          const SizedBox(height: 6),
+                          Text(
+                            playlist.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPinnedPlaylistCover(
+    UserPlaylistCollection playlist,
+    ColorScheme colorScheme,
+  ) {
+    const size = 108.0;
+    final borderRadius = BorderRadius.circular(10);
+    final placeholder = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: borderRadius,
+      ),
+      child: Icon(Icons.queue_music, color: colorScheme.onSurfaceVariant),
+    );
+
+    final customCoverPath = playlist.coverImagePath;
+    if (customCoverPath != null && customCoverPath.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: Image.file(
+          File(customCoverPath),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          cacheWidth: 216,
+          filterQuality: FilterQuality.low,
+          errorBuilder: (_, _, _) => placeholder,
+        ),
+      );
+    }
+
+    String? firstCoverUrl;
+    for (final entry in playlist.tracks) {
+      final cover = entry.track.coverUrl?.trim();
+      if (cover != null && cover.isNotEmpty) {
+        firstCoverUrl = cover;
+        break;
+      }
+    }
+    if (firstCoverUrl == null) {
+      return placeholder;
+    }
+
+    final isLocalCover =
+        !firstCoverUrl.startsWith('http://') &&
+        !firstCoverUrl.startsWith('https://');
+    if (isLocalCover) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: Image.file(
+          File(firstCoverUrl),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          cacheWidth: 216,
+          filterQuality: FilterQuality.low,
+          errorBuilder: (_, _, _) => placeholder,
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: CachedNetworkImage(
+        imageUrl: firstCoverUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        memCacheWidth: 216,
+        memCacheHeight: 216,
+        cacheManager: CoverCacheManager.instance,
+        errorWidget: (_, _, _) => placeholder,
       ),
     );
   }
@@ -5082,6 +5292,7 @@ class _ExtensionPlaylistScreenState
       playlistName: widget.playlistName,
       coverUrl: widget.coverUrl,
       tracks: _tracks!,
+      playlistId: 'ext:${widget.extensionId}:${widget.playlistId}',
       recommendedService: widget.extensionId,
     );
   }

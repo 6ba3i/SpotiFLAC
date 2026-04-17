@@ -9,7 +9,7 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get appName => 'SpotiFLAC';
+  String get appName => 'spotify+';
 
   @override
   String get navHome => 'Home';
@@ -37,6 +37,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get homeContinueListening => 'Continue listening';
+
+  @override
+  String get homePinnedCollections => 'Pinned collections';
 
   @override
   String get historyFilterAll => 'All';
@@ -2586,6 +2589,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get collectionUnpin => 'Unpin';
 
   @override
+  String get collectionAddToHome => 'Add to Home';
+
+  @override
+  String get collectionRemoveFromHome => 'Remove from Home';
+
+  @override
+  String collectionDownloadMissingCount(int count) {
+    return 'Download missing ($count)';
+  }
+
+  @override
   String get collectionReorderPlaylists => 'Reorder playlists';
 
   @override
@@ -3461,7 +3475,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   AppLocalizationsEsEs() : super('es_ES');
 
   @override
-  String get appName => 'SpotiFLAC';
+  String get appName => 'spotify+';
 
   @override
   String get navHome => 'Inicio';

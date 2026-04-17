@@ -127,7 +127,7 @@ abstract class AppLocalizations {
   /// App name - DO NOT TRANSLATE
   ///
   /// In en, this message translates to:
-  /// **'SpotiFLAC'**
+  /// **'spotify+'**
   String get appName;
 
   /// Bottom navigation - Home tab
@@ -183,6 +183,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue listening'**
   String get homeContinueListening;
+
+  /// Home section header for pinned local playlists
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned collections'**
+  String get homePinnedCollections;
 
   /// Filter chip - show all items
   ///
@@ -4552,6 +4558,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unpin'**
   String get collectionUnpin;
+
+  /// Action to add a local playlist to the Home pinned section
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Home'**
+  String get collectionAddToHome;
+
+  /// Action to remove a local playlist from the Home pinned section
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from Home'**
+  String get collectionRemoveFromHome;
+
+  /// Action label to download only tracks that are not local yet from a playlist
+  ///
+  /// In en, this message translates to:
+  /// **'Download missing ({count})'**
+  String collectionDownloadMissingCount(int count);
 
   /// Tooltip label when entering playlist reorder mode
   ///

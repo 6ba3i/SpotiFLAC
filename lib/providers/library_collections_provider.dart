@@ -186,6 +186,33 @@ class PlaylistPickerSummaryRequest {
   int get hashCode => Object.hashAll(trackKeys);
 }
 
+class PlaylistMirrorLink {
+  final String linkKey;
+  final String playlistId;
+  final String sourceName;
+  final DateTime updatedAt;
+
+  const PlaylistMirrorLink({
+    required this.linkKey,
+    required this.playlistId,
+    required this.sourceName,
+    required this.updatedAt,
+  });
+
+  PlaylistMirrorLink copyWith({
+    String? playlistId,
+    String? sourceName,
+    DateTime? updatedAt,
+  }) {
+    return PlaylistMirrorLink(
+      linkKey: linkKey,
+      playlistId: playlistId ?? this.playlistId,
+      sourceName: sourceName ?? this.sourceName,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+}
+
 class LibraryCollectionsState {
   final List<CollectionTrackEntry> wishlist;
   final List<CollectionTrackEntry> loved;
@@ -195,6 +222,7 @@ class LibraryCollectionsState {
   final Set<String> _lovedKeys;
   final Map<String, UserPlaylistCollection> _playlistsById;
   final Set<String> _allPlaylistTrackKeys;
+  final Map<String, PlaylistMirrorLink> _playlistMirrorsByLinkKey;
 
   LibraryCollectionsState({
     this.wishlist = const [],
@@ -205,6 +233,7 @@ class LibraryCollectionsState {
     Set<String>? lovedKeys,
     Map<String, UserPlaylistCollection>? playlistsById,
     Set<String>? allPlaylistTrackKeys,
+    Map<String, PlaylistMirrorLink>? playlistMirrorsByLinkKey,
   }) : _wishlistKeys =
            wishlistKeys ?? wishlist.map((entry) => entry.key).toSet(),
        _lovedKeys = lovedKeys ?? loved.map((entry) => entry.key).toSet(),
@@ -214,7 +243,14 @@ class LibraryCollectionsState {
              playlists.map((playlist) => MapEntry(playlist.id, playlist)),
            ),
        _allPlaylistTrackKeys =
-           allPlaylistTrackKeys ?? _buildPlaylistTrackKeys(playlists);
+           allPlaylistTrackKeys ?? _buildPlaylistTrackKeys(playlists),
+       _playlistMirrorsByLinkKey = _buildPlaylistMirrorsByLinkKey(
+         playlistMirrorsByLinkKey,
+         playlistsById ??
+             Map.fromEntries(
+               playlists.map((playlist) => MapEntry(playlist.id, playlist)),
+             ),
+       );
 
   int get wishlistCount => wishlist.length;
   int get lovedCount => loved.length;
@@ -254,11 +290,16 @@ class LibraryCollectionsState {
 
   bool get hasPlaylistTracks => _allPlaylistTrackKeys.isNotEmpty;
 
+  PlaylistMirrorLink? playlistMirrorByLinkKey(String linkKey) {
+    return _playlistMirrorsByLinkKey[linkKey];
+  }
+
   LibraryCollectionsState copyWith({
     List<CollectionTrackEntry>? wishlist,
     List<CollectionTrackEntry>? loved,
     List<UserPlaylistCollection>? playlists,
     bool? isLoaded,
+    Map<String, PlaylistMirrorLink>? playlistMirrorsByLinkKey,
   }) {
     final nextWishlist = wishlist ?? this.wishlist;
     final nextLoved = loved ?? this.loved;
@@ -276,6 +317,8 @@ class LibraryCollectionsState {
       lovedKeys: keepLovedIndex ? _lovedKeys : null,
       playlistsById: keepPlaylistIndex ? _playlistsById : null,
       allPlaylistTrackKeys: keepPlaylistIndex ? _allPlaylistTrackKeys : null,
+      playlistMirrorsByLinkKey:
+          playlistMirrorsByLinkKey ?? _playlistMirrorsByLinkKey,
     );
   }
 
@@ -323,6 +366,22 @@ Set<String> _buildPlaylistTrackKeys(List<UserPlaylistCollection> playlists) {
     }
   }
   return keys;
+}
+
+Map<String, PlaylistMirrorLink> _buildPlaylistMirrorsByLinkKey(
+  Map<String, PlaylistMirrorLink>? mirrors,
+  Map<String, UserPlaylistCollection> playlistsById,
+) {
+  if (mirrors == null || mirrors.isEmpty || playlistsById.isEmpty) {
+    return const <String, PlaylistMirrorLink>{};
+  }
+  final filtered = <String, PlaylistMirrorLink>{};
+  for (final entry in mirrors.entries) {
+    if (playlistsById.containsKey(entry.value.playlistId)) {
+      filtered[entry.key] = entry.value;
+    }
+  }
+  return filtered;
 }
 
 class PlaylistAddBatchResult {
@@ -403,10 +462,27 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
         );
       }
 
+      final playlistMirrorsByLinkKey = <String, PlaylistMirrorLink>{};
+      for (final row in snapshot.playlistMirrorRows) {
+        final linkKey = (row['link_key'] as String?)?.trim() ?? '';
+        final playlistId = (row['playlist_id'] as String?)?.trim() ?? '';
+        if (linkKey.isEmpty || playlistId.isEmpty) continue;
+        if (!playlists.any((playlist) => playlist.id == playlistId)) continue;
+        final sourceName = (row['source_name'] as String?)?.trim() ?? '';
+        final updatedAtRaw = row['updated_at'] as String?;
+        playlistMirrorsByLinkKey[linkKey] = PlaylistMirrorLink(
+          linkKey: linkKey,
+          playlistId: playlistId,
+          sourceName: sourceName,
+          updatedAt: DateTime.tryParse(updatedAtRaw ?? '') ?? DateTime.now(),
+        );
+      }
+
       state = LibraryCollectionsState(
         wishlist: wishlist,
         loved: loved,
         playlists: playlists,
+        playlistMirrorsByLinkKey: playlistMirrorsByLinkKey,
         isLoaded: true,
       );
     } catch (_) {
@@ -482,6 +558,92 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     updatedPlaylists[playlistIndex] = nextPlaylist;
     state = state.copyWith(playlists: updatedPlaylists);
     return true;
+  }
+
+  Future<void> _setPlaylistMirrorLink({
+    required String linkKey,
+    required String playlistId,
+    required String sourceName,
+    required DateTime updatedAt,
+  }) async {
+    await _db.upsertPlaylistMirror(
+      linkKey: linkKey,
+      playlistId: playlistId,
+      sourceName: sourceName,
+      updatedAt: updatedAt.toIso8601String(),
+    );
+
+    final updatedMirrors = <String, PlaylistMirrorLink>{
+      for (final entry in state._playlistMirrorsByLinkKey.entries)
+        entry.key: entry.value,
+    };
+    updatedMirrors[linkKey] = PlaylistMirrorLink(
+      linkKey: linkKey,
+      playlistId: playlistId,
+      sourceName: sourceName,
+      updatedAt: updatedAt,
+    );
+    state = state.copyWith(playlistMirrorsByLinkKey: updatedMirrors);
+  }
+
+  Future<void> mirrorDownloadedTrackToPlaylist({
+    required String linkKey,
+    required String playlistName,
+    required Track track,
+  }) async {
+    await _ensureLoaded();
+    final normalizedLinkKey = linkKey.trim();
+    if (normalizedLinkKey.isEmpty) return;
+
+    final normalizedPlaylistName = playlistName.trim();
+    final fallbackName = track.albumName.trim().isNotEmpty
+        ? track.albumName.trim()
+        : 'Playlist';
+    final targetRemoteName = normalizedPlaylistName.isEmpty
+        ? fallbackName
+        : normalizedPlaylistName;
+    final now = DateTime.now();
+
+    final existingLink = state.playlistMirrorByLinkKey(normalizedLinkKey);
+    UserPlaylistCollection? targetPlaylist;
+    if (existingLink != null) {
+      targetPlaylist = state.playlistById(existingLink.playlistId);
+    }
+
+    if (targetPlaylist == null) {
+      final createdPlaylistId = await createPlaylist(targetRemoteName);
+      targetPlaylist = state.playlistById(createdPlaylistId);
+      if (targetPlaylist == null) return;
+      await _setPlaylistMirrorLink(
+        linkKey: normalizedLinkKey,
+        playlistId: targetPlaylist.id,
+        sourceName: targetRemoteName,
+        updatedAt: now,
+      );
+    } else {
+      final previousRemoteName = existingLink?.sourceName.trim() ?? '';
+      final remoteRenamed =
+          previousRemoteName.isNotEmpty &&
+          targetRemoteName.isNotEmpty &&
+          previousRemoteName != targetRemoteName;
+      final localStillMatchesPreviousRemote =
+          targetPlaylist.name.trim() == previousRemoteName;
+
+      if (remoteRenamed && localStillMatchesPreviousRemote) {
+        await renamePlaylist(targetPlaylist.id, targetRemoteName);
+        targetPlaylist =
+            state.playlistById(targetPlaylist.id) ?? targetPlaylist;
+      }
+
+      await _setPlaylistMirrorLink(
+        linkKey: normalizedLinkKey,
+        playlistId: targetPlaylist.id,
+        sourceName: targetRemoteName,
+        updatedAt: now,
+      );
+    }
+
+    await addTrackToPlaylist(targetPlaylist.id, track);
   }
 
   Future<bool> toggleWishlist(Track track) async {
@@ -658,15 +820,14 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     );
     await _db.reorderPlaylistTracks(
       playlistId: playlistId,
-      trackKeysInOrder: reorderedTracks.map((e) => e.key).toList(growable: false),
+      trackKeysInOrder: reorderedTracks
+          .map((e) => e.key)
+          .toList(growable: false),
       playlistUpdatedAt: now.toIso8601String(),
     );
     final changed = _replacePlaylistById(playlistId, (playlist) {
       if (playlist.containsTrackKey(key)) return playlist;
-      return playlist.copyWith(
-        tracks: reorderedTracks,
-        updatedAt: now,
-      );
+      return playlist.copyWith(tracks: reorderedTracks, updatedAt: now);
     });
     if (!changed) return false;
     _invalidatePlaylistPickerSummaries();
@@ -739,14 +900,13 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     );
     await _db.reorderPlaylistTracks(
       playlistId: playlistId,
-      trackKeysInOrder: reorderedTracks.map((e) => e.key).toList(growable: false),
+      trackKeysInOrder: reorderedTracks
+          .map((e) => e.key)
+          .toList(growable: false),
       playlistUpdatedAt: now.toIso8601String(),
     );
     final changed = _replacePlaylistById(playlistId, (current) {
-      return current.copyWith(
-        tracks: reorderedTracks,
-        updatedAt: now,
-      );
+      return current.copyWith(tracks: reorderedTracks, updatedAt: now);
     });
     if (!changed) {
       return PlaylistAddBatchResult(

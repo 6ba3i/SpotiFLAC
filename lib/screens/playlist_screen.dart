@@ -62,6 +62,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   List<Track> get _tracks => _fetchedTracks ?? widget.tracks;
   String get _playlistName => _resolvedPlaylistName ?? widget.playlistName;
   String? get _coverUrl => _resolvedCoverUrl ?? widget.coverUrl;
+  String? get _playlistLinkKey {
+    final playlistId = widget.playlistId?.trim();
+    if (playlistId == null || playlistId.isEmpty) return null;
+    return 'playlist:$playlistId';
+  }
 
   String? _recommendedDownloadService() {
     final explicit = widget.recommendedService;
@@ -110,11 +115,13 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     final query = _searchQuery;
     var filtered = _tracks;
     if (query.isNotEmpty) {
-      filtered = _tracks.where((track) {
-        return track.name.toLowerCase().contains(query) ||
-            track.artistName.toLowerCase().contains(query) ||
-            track.albumName.toLowerCase().contains(query);
-      }).toList(growable: false);
+      filtered = _tracks
+          .where((track) {
+            return track.name.toLowerCase().contains(query) ||
+                track.artistName.toLowerCase().contains(query) ||
+                track.albumName.toLowerCase().contains(query);
+          })
+          .toList(growable: false);
     }
 
     if (_sortMode == _CollectionSortMode.defaultOrder) {
@@ -126,19 +133,25 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       case _CollectionSortMode.defaultOrder:
         break;
       case _CollectionSortMode.titleAz:
-        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
         break;
       case _CollectionSortMode.titleZa:
-        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+        );
         break;
       case _CollectionSortMode.artistAz:
         sorted.sort(
-          (a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()),
+          (a, b) =>
+              a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()),
         );
         break;
       case _CollectionSortMode.artistZa:
         sorted.sort(
-          (a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()),
+          (a, b) =>
+              b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()),
         );
         break;
       case _CollectionSortMode.durationShort:
@@ -454,9 +467,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
-    final hintStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      color: colorScheme.onSurfaceVariant,
-    );
+    final hintStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant);
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
@@ -652,6 +665,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 service,
                 qualityOverride: quality,
                 playlistName: _playlistName,
+                playlistLinkKey: _playlistLinkKey,
               );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -667,6 +681,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             track,
             settings.defaultService,
             playlistName: _playlistName,
+            playlistLinkKey: _playlistLinkKey,
           );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
@@ -786,10 +801,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     final tracks = _visibleTracks;
     if (tracks.isEmpty) return;
     final shuffled = [...tracks]..shuffle();
-    ref
-        .read(playbackProvider.notifier)
-        .playTrackList(shuffled)
-        .catchError((Object e) {
+    ref.read(playbackProvider.notifier).playTrackList(shuffled).catchError((
+      Object e,
+    ) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
@@ -800,10 +814,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   void _playAll() {
     final tracks = _visibleTracks;
     if (tracks.isEmpty) return;
-    ref
-        .read(playbackProvider.notifier)
-        .playTrackList(tracks)
-        .catchError((Object e) {
+    ref.read(playbackProvider.notifier).playTrackList(tracks).catchError((
+      Object e,
+    ) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
@@ -869,6 +882,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 service,
                 qualityOverride: quality,
                 playlistName: _playlistName,
+                playlistLinkKey: _playlistLinkKey,
               );
           _showQueuedSnackbar(context, tracksToQueue.length, skippedCount);
         },
@@ -880,6 +894,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             tracksToQueue,
             settings.defaultService,
             playlistName: _playlistName,
+            playlistLinkKey: _playlistLinkKey,
           );
       _showQueuedSnackbar(context, tracksToQueue.length, skippedCount);
     }

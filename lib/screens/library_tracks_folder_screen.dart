@@ -56,6 +56,8 @@ class _LibraryTracksFolderScreenState
   final Set<String> _selectedKeys = {};
   UserPlaylistCollection? playlist;
 
+  String _playlistPinKey(String playlistId) => 'playlist:$playlistId';
+
   @override
   void initState() {
     super.initState();
@@ -260,16 +262,20 @@ class _LibraryTracksFolderScreenState
     showAddTracksToPlaylistSheet(context, ref, selectedTracks);
   }
 
-  List<CollectionTrackEntry> _visibleEntries(List<CollectionTrackEntry> entries) {
+  List<CollectionTrackEntry> _visibleEntries(
+    List<CollectionTrackEntry> entries,
+  ) {
     final query = _searchQuery;
     var filtered = entries;
     if (query.isNotEmpty) {
-      filtered = entries.where((entry) {
-        final track = entry.track;
-        return track.name.toLowerCase().contains(query) ||
-            track.artistName.toLowerCase().contains(query) ||
-            track.albumName.toLowerCase().contains(query);
-      }).toList(growable: false);
+      filtered = entries
+          .where((entry) {
+            final track = entry.track;
+            return track.name.toLowerCase().contains(query) ||
+                track.artistName.toLowerCase().contains(query) ||
+                track.albumName.toLowerCase().contains(query);
+          })
+          .toList(growable: false);
     }
 
     if (_sortMode == _FolderSortMode.defaultOrder) {
@@ -282,12 +288,14 @@ class _LibraryTracksFolderScreenState
         break;
       case _FolderSortMode.titleAz:
         sorted.sort(
-          (a, b) => a.track.name.toLowerCase().compareTo(b.track.name.toLowerCase()),
+          (a, b) =>
+              a.track.name.toLowerCase().compareTo(b.track.name.toLowerCase()),
         );
         break;
       case _FolderSortMode.titleZa:
         sorted.sort(
-          (a, b) => b.track.name.toLowerCase().compareTo(a.track.name.toLowerCase()),
+          (a, b) =>
+              b.track.name.toLowerCase().compareTo(a.track.name.toLowerCase()),
         );
         break;
       case _FolderSortMode.artistAz:
@@ -312,6 +320,38 @@ class _LibraryTracksFolderScreenState
         break;
     }
     return sorted;
+  }
+
+  bool _isTrackInLibrary(
+    Track track,
+    DownloadHistoryState historyState,
+    LocalLibraryState localState,
+  ) {
+    final normalizedIsrc = track.isrc?.trim();
+    final inHistory =
+        historyState.isDownloaded(track.id) ||
+        (normalizedIsrc != null &&
+            normalizedIsrc.isNotEmpty &&
+            historyState.getByIsrc(normalizedIsrc) != null) ||
+        historyState.findByTrackAndArtist(track.name, track.artistName) != null;
+    if (inHistory) return true;
+
+    return localState.existsInLibrary(
+      isrc: normalizedIsrc,
+      trackName: track.name,
+      artistName: track.artistName,
+    );
+  }
+
+  List<Track> _missingTracksFromEntries(
+    List<CollectionTrackEntry> entries,
+    DownloadHistoryState historyState,
+    LocalLibraryState localState,
+  ) {
+    return entries
+        .map((entry) => entry.track)
+        .where((track) => !_isTrackInLibrary(track, historyState, localState))
+        .toList(growable: false);
   }
 
   String _sortLabel(_FolderSortMode mode, BuildContext context) {
@@ -369,8 +409,11 @@ class _LibraryTracksFolderScreenState
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    ref.watch(localLibraryProvider.select((s) => s.items));
-    final localState = ref.read(localLibraryProvider);
+    final localState = ref.watch(localLibraryProvider);
+    final historyState = ref.watch(downloadHistoryProvider);
+    final pinnedCollectionIds = ref.watch(
+      settingsProvider.select((s) => s.pinnedCollectionIds),
+    );
     final List<CollectionTrackEntry> entries;
 
     switch (widget.mode) {
@@ -443,8 +486,15 @@ class _LibraryTracksFolderScreenState
     final folderTracks = visibleEntries
         .map((entry) => entry.track)
         .toList(growable: false);
+    final missingTracks = widget.mode == LibraryTracksFolderMode.playlist
+        ? _missingTracksFromEntries(entries, historyState, localState)
+        : const <Track>[];
 
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final isPinnedToHome =
+        widget.mode == LibraryTracksFolderMode.playlist &&
+        widget.playlistId != null &&
+        pinnedCollectionIds.contains(_playlistPinKey(widget.playlistId!));
 
     return PopScope(
       canPop: !_isSelectionMode,
@@ -466,6 +516,8 @@ class _LibraryTracksFolderScreenState
                   entries,
                   playlist,
                   localState,
+                  missingTracks,
+                  isPinnedToHome,
                 ),
                 if (entries.isNotEmpty)
                   _buildSearchSortBar(context, colorScheme),
@@ -493,7 +545,11 @@ class _LibraryTracksFolderScreenState
                       if (playlistId == null) return;
                       ref
                           .read(libraryCollectionsProvider.notifier)
-                          .reorderPlaylistTracks(playlistId, oldIndex, newIndex);
+                          .reorderPlaylistTracks(
+                            playlistId,
+                            oldIndex,
+                            newIndex,
+                          );
                     },
                     itemBuilder: (context, index) {
                       final entry = visibleEntries[index];
@@ -598,7 +654,7 @@ class _LibraryTracksFolderScreenState
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding > 0 ? 8 : 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -811,6 +867,8 @@ class _LibraryTracksFolderScreenState
     List<CollectionTrackEntry> entries,
     UserPlaylistCollection? playlist,
     LocalLibraryState localState,
+    List<Track> missingTracks,
+    bool isPinnedToHome,
   ) {
     final expandedHeight = _calculateExpandedHeight(context);
     final customCoverPath = playlist?.coverImagePath;
@@ -844,6 +902,33 @@ class _LibraryTracksFolderScreenState
         ),
       ),
       actions: [
+        if (isPlaylistMode && !_isSelectionMode && widget.playlistId != null)
+          IconButton(
+            tooltip: isPinnedToHome
+                ? context.l10n.collectionRemoveFromHome
+                : context.l10n.collectionAddToHome,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isPinnedToHome
+                    ? Icons.push_pin_rounded
+                    : Icons.push_pin_outlined,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            onPressed: () {
+              final playlistId = widget.playlistId;
+              if (playlistId == null) return;
+              ref
+                  .read(settingsProvider.notifier)
+                  .togglePinnedCollection(_playlistPinKey(playlistId));
+            },
+          ),
         if (isPlaylistMode && !_isSelectionMode)
           IconButton(
             icon: Container(
@@ -1001,17 +1086,36 @@ class _LibraryTracksFolderScreenState
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 12,
+                            runSpacing: 10,
                             children: [
                               if (widget.mode !=
-                                  LibraryTracksFolderMode.wishlist) ...[
-                                _buildShufflePlayButton(visibleEntries: entries),
-                                const SizedBox(width: 12),
-                                _buildPlayAllCenterButton(visibleEntries: entries),
-                                const SizedBox(width: 12),
-                              ],
-                              _buildDownloadAllCenterButton(entries),
+                                  LibraryTracksFolderMode.wishlist)
+                                _buildShufflePlayButton(
+                                  visibleEntries: entries,
+                                ),
+                              if (widget.mode !=
+                                  LibraryTracksFolderMode.wishlist)
+                                _buildPlayAllCenterButton(
+                                  visibleEntries: entries,
+                                ),
+                              if (widget.mode !=
+                                      LibraryTracksFolderMode.playlist ||
+                                  missingTracks.isNotEmpty)
+                                _buildDownloadAllCenterButton(
+                                  tracks:
+                                      widget.mode ==
+                                          LibraryTracksFolderMode.playlist
+                                      ? missingTracks
+                                      : entries
+                                            .map((entry) => entry.track)
+                                            .toList(growable: false),
+                                  showMissingLabel:
+                                      widget.mode ==
+                                      LibraryTracksFolderMode.playlist,
+                                ),
                             ],
                           ),
                         ],
@@ -1089,12 +1193,18 @@ class _LibraryTracksFolderScreenState
     );
   }
 
-  Widget _buildDownloadAllCenterButton(List<CollectionTrackEntry> entries) {
-    final tracks = entries.map((e) => e.track).toList(growable: false);
+  Widget _buildDownloadAllCenterButton({
+    required List<Track> tracks,
+    required bool showMissingLabel,
+  }) {
     return FilledButton.icon(
       onPressed: tracks.isEmpty ? null : () => _confirmDownloadAll(tracks),
       icon: const Icon(Icons.download_rounded, size: 18),
-      label: Text(context.l10n.downloadAllCount(tracks.length)),
+      label: Text(
+        showMissingLabel
+            ? context.l10n.collectionDownloadMissingCount(tracks.length)
+            : context.l10n.downloadAllCount(tracks.length),
+      ),
       style: FilledButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -1136,10 +1246,9 @@ class _LibraryTracksFolderScreenState
     final tracks = entries.map((entry) => entry.track).toList(growable: false);
     if (tracks.isEmpty) return;
     final shuffled = [...tracks]..shuffle();
-    ref
-        .read(playbackProvider.notifier)
-        .playTrackList(shuffled)
-        .catchError((Object e) {
+    ref.read(playbackProvider.notifier).playTrackList(shuffled).catchError((
+      Object e,
+    ) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
@@ -1149,10 +1258,9 @@ class _LibraryTracksFolderScreenState
 
   void _playAll(List<Track> tracks) {
     if (tracks.isEmpty) return;
-    ref
-        .read(playbackProvider.notifier)
-        .playTrackList(tracks)
-        .catchError((Object e) {
+    ref.read(playbackProvider.notifier).playTrackList(tracks).catchError((
+      Object e,
+    ) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
@@ -1530,9 +1638,9 @@ class _CollectionTrackTile extends ConsumerWidget {
                         ? IconButton(
                             tooltip: context.l10n.tooltipPlay,
                             onPressed: () {
-                              ref
-                                  .read(playbackProvider.notifier)
-                                  .playTrackList([track]);
+                              ref.read(playbackProvider.notifier).playTrackList(
+                                [track],
+                              );
                             },
                             icon: Icon(
                               Icons.play_arrow,

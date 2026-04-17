@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "@@last_modified": "2026-01-16",
-  "appName": "SpotiFLAC",
+  "appName": "spotify+",
   "@appName": {
     "description": "App name - DO NOT TRANSLATE"
   },
@@ -40,6 +40,10 @@
   "homeContinueListening": "Continue listening",
   "@homeContinueListening": {
     "description": "Home card title to resume the last playback session"
+  },
+  "homePinnedCollections": "Pinned collections",
+  "@homePinnedCollections": {
+    "description": "Home section header for pinned local playlists"
   },
   "historyFilterAll": "All",
   "@historyFilterAll": {
@@ -103,7 +107,7 @@
   },
   "downloadFolderOrganization": "Folder Organization",
   "@downloadFolderOrganization": {
-    "description": "Setting for folder structure"
+    "description": "Title of the folder organization picker bottom sheet"
   },
   "appearanceTitle": "Appearance",
   "@appearanceTitle": {
@@ -733,7 +737,7 @@
   },
   "dialogDownload": "Download",
   "@dialogDownload": {
-    "description": "Dialog button - download action"
+    "description": "Confirm button in Download All dialog"
   },
   "dialogDiscard": "Discard",
   "@dialogDiscard": {
@@ -3407,6 +3411,23 @@
   "@collectionUnpin": {
     "description": "Action to remove a playlist pin"
   },
+  "collectionAddToHome": "Add to Home",
+  "@collectionAddToHome": {
+    "description": "Action to add a local playlist to the Home pinned section"
+  },
+  "collectionRemoveFromHome": "Remove from Home",
+  "@collectionRemoveFromHome": {
+    "description": "Action to remove a local playlist from the Home pinned section"
+  },
+  "collectionDownloadMissingCount": "Download missing ({count})",
+  "@collectionDownloadMissingCount": {
+    "description": "Action label to download only tracks that are not local yet from a playlist",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "collectionReorderPlaylists": "Reorder playlists",
   "@collectionReorderPlaylists": {
     "description": "Tooltip label when entering playlist reorder mode"
@@ -3638,7 +3659,6 @@
   "@downloadUseAlbumArtistForFoldersTrackSubtitle": {
     "description": "Subtitle when Track Artist is used for folder naming"
   },
-
   "lyricsProvidersTitle": "Lyrics Providers",
   "@lyricsProvidersTitle": {
     "description": "Title for the lyrics provider priority page"
@@ -3705,7 +3725,6 @@
   "@lyricsProviderExtensionDesc": {
     "description": "Generic description for extension-based lyrics providers"
   },
-
   "safMigrationTitle": "Storage Update Required",
   "@safMigrationTitle": {
     "description": "Title of SAF migration dialog"
@@ -3722,7 +3741,6 @@
   "@safMigrationSuccess": {
     "description": "Snackbar after successfully migrating to SAF"
   },
-
   "settingsDonate": "Donate",
   "@settingsDonate": {
     "description": "Settings menu item - donate"
@@ -3731,7 +3749,6 @@
   "@settingsDonateSubtitle": {
     "description": "Subtitle for donate menu item"
   },
-
   "tooltipLoveAll": "Love All",
   "@tooltipLoveAll": {
     "description": "Tooltip for the Love All button on album/playlist screens"
@@ -3758,10 +3775,9 @@
       }
     }
   },
-
   "dialogDownloadAllTitle": "Download All",
   "@dialogDownloadAllTitle": {
-    "description": "Title of the Download All confirmation dialog"
+    "description": "Dialog title for bulk download confirmation"
   },
   "dialogDownloadAllMessage": "Download {count} tracks?",
   "@dialogDownloadAllMessage": {
@@ -3772,11 +3788,6 @@
       }
     }
   },
-  "dialogDownload": "Download",
-  "@dialogDownload": {
-    "description": "Confirm button in Download All dialog"
-  },
-
   "homeSkipAlreadyDownloaded": "Skip already downloaded songs",
   "@homeSkipAlreadyDownloaded": {
     "description": "Checkbox label in import dialog to skip already-downloaded songs"
@@ -3789,7 +3800,6 @@
   "@homeAlbumInfoUnavailable": {
     "description": "Snackbar when album info cannot be loaded"
   },
-
   "snackbarLoadingCueSheet": "Loading CUE sheet...",
   "@snackbarLoadingCueSheet": {
     "description": "Snackbar while loading a CUE sheet file"
@@ -3819,12 +3829,10 @@
   "@snackbarNoActionDefined": {
     "description": "Snackbar when an extension button has no action configured"
   },
-
   "noTracksFoundForAlbum": "No tracks found for this album",
   "@noTracksFoundForAlbum": {
     "description": "Empty state message when an album has no tracks"
   },
-
   "downloadLocationSubtitle": "Choose storage mode for downloaded files.",
   "@downloadLocationSubtitle": {
     "description": "Subtitle text in Android download location bottom sheet"
@@ -3901,7 +3909,6 @@
   "@downloadSelectServiceToEnable": {
     "description": "Hint shown instead of Ask-quality subtitle when no built-in service selected"
   },
-
   "downloadSelectTidalQobuz": "Select Tidal or Qobuz above to configure quality",
   "@downloadSelectTidalQobuz": {
     "description": "Info hint when non-Tidal/Qobuz service is selected"
@@ -3966,7 +3973,6 @@
   "@downloadFilterContributingDisabled": {
     "description": "Subtitle when contributing artist filter is disabled"
   },
-
   "downloadProvidersNoneEnabled": "None enabled",
   "@downloadProvidersNoneEnabled": {
     "description": "Subtitle for lyrics providers setting when no providers are enabled"
@@ -3987,7 +3993,6 @@
   "@downloadMusixmatchAuto": {
     "description": "Button to reset Musixmatch language to automatic"
   },
-
   "downloadNetworkAnySubtitle": "WiFi + Mobile Data",
   "@downloadNetworkAnySubtitle": {
     "description": "Subtitle for 'Any' network mode option"
@@ -4000,10 +4005,6 @@
   "@downloadSongLinkRegionDesc": {
     "description": "Description in the SongLink region picker"
   },
-  "downloadFolderOrganization": "Folder Organization",
-  "@downloadFolderOrganization": {
-    "description": "Title of the folder organization picker bottom sheet"
-  },
   "snackbarUnsupportedAudioFormat": "Unsupported audio format",
   "@snackbarUnsupportedAudioFormat": {
     "description": "Snackbar when the audio format is not supported for the requested operation"
@@ -4011,10 +4012,6 @@
   "cacheRefresh": "Refresh",
   "@cacheRefresh": {
     "description": "Tooltip for refresh button on cache management page"
-  },
-  "dialogDownloadAllTitle": "Download All",
-  "@dialogDownloadAllTitle": {
-    "description": "Dialog title for bulk download confirmation"
   },
   "dialogDownloadPlaylistsMessage": "Download {trackCount} {trackCount, plural, =1{track} other{tracks}} from {playlistCount} {playlistCount, plural, =1{playlist} other{playlists}}?",
   "@dialogDownloadPlaylistsMessage": {
@@ -4143,7 +4140,6 @@
   "@editMetadataSelectEmpty": {
     "description": "Button to select only fields that are currently empty"
   },
-
   "queueDownloadingCount": "Downloading ({count})",
   "@queueDownloadingCount": {
     "description": "Header for active downloads section with count",
@@ -4267,7 +4263,6 @@
   "@audioAnalysisSamples": {
     "description": "Total samples metric label"
   },
-
   "extensionsSearchWith": "Search with {providerName}",
   "@extensionsSearchWith": {
     "description": "Extensions page - subtitle for built-in search provider option",
@@ -4306,7 +4301,6 @@
   "@extensionsNoHomeFeedExtensions": {
     "description": "Extensions page - shown when no installed extension has home feed"
   },
-
   "sortAlphaAsc": "A-Z",
   "@sortAlphaAsc": {
     "description": "Sort option - alphabetical ascending"
@@ -4332,7 +4326,6 @@
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
   },
-
   "metadataSaveFailedFfmpeg": "Failed to save metadata via FFmpeg",
   "@metadataSaveFailedFfmpeg": {
     "description": "Snackbar error when FFmpeg fails to write metadata"
@@ -4341,7 +4334,6 @@
   "@metadataSaveFailedStorage": {
     "description": "Snackbar error when writing metadata file back to storage fails"
   },
-
   "snackbarFolderPickerFailed": "Failed to open folder picker: {error}",
   "@snackbarFolderPickerFailed": {
     "description": "Snackbar shown when folder picker fails to open",
@@ -4351,7 +4343,6 @@
       }
     }
   },
-
   "errorLoadAlbum": "Failed to load album",
   "@errorLoadAlbum": {
     "description": "Error state shown when album fails to load"
@@ -4364,7 +4355,6 @@
   "@errorLoadArtist": {
     "description": "Error state shown when artist fails to load"
   },
-
   "notifChannelDownloadName": "Download Progress",
   "@notifChannelDownloadName": {
     "description": "Android notification channel name for download progress"

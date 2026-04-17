@@ -1,7 +1,7 @@
 {
   "@@locale": "tr",
   "@@last_modified": "2026-01-16",
-  "appName": "SpotiFLAC",
+  "appName": "spotify+",
   "@appName": {
     "description": "App name - DO NOT TRANSLATE"
   },
@@ -89,9 +89,9 @@
   "@downloadFilenameFormat": {
     "description": "Setting for output filename pattern"
   },
-  "downloadFolderOrganization": "Klasör Düzeni",
+  "downloadFolderOrganization": "Klasör Düzeni Seçimi",
   "@downloadFolderOrganization": {
-    "description": "Setting for folder structure"
+    "description": "Title of the folder organization picker bottom sheet"
   },
   "appearanceTitle": "Görünüm",
   "@appearanceTitle": {
@@ -677,7 +677,7 @@
   },
   "dialogDownload": "İndir",
   "@dialogDownload": {
-    "description": "Dialog button - download action"
+    "description": "Confirm button in Download All dialog"
   },
   "dialogDiscard": "Değişiklikleri Sil",
   "@dialogDiscard": {
@@ -3568,10 +3568,6 @@
       }
     }
   },
-  "dialogDownload": "İndir",
-  "@dialogDownload": {
-    "description": "Confirm button in Download All dialog"
-  },
   "homeSkipAlreadyDownloaded": "Daha önce inmiş olan şarkıları atla",
   "@homeSkipAlreadyDownloaded": {
     "description": "Checkbox label in import dialog to skip already-downloaded songs"
@@ -3788,10 +3784,6 @@
   "downloadSongLinkRegionDesc": "Şarkı aramalarında SongLink API'ye iletilecek ülke kodunu belirler.",
   "@downloadSongLinkRegionDesc": {
     "description": "Description in the SongLink region picker"
-  },
-  "downloadFolderOrganization": "Klasör Düzeni Seçimi",
-  "@downloadFolderOrganization": {
-    "description": "Title of the folder organization picker bottom sheet"
   },
   "snackbarUnsupportedAudioFormat": "Bu ses formatı desteklenmiyor",
   "@snackbarUnsupportedAudioFormat": {

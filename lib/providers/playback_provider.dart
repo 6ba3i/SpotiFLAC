@@ -404,8 +404,8 @@ class PlaybackController extends Notifier<PlaybackState> {
     _subscriptions.add(
       _player
           .createPositionStream(
-            minPeriod: const Duration(milliseconds: 16),
-            maxPeriod: const Duration(milliseconds: 33),
+            minPeriod: const Duration(milliseconds: 50),
+            maxPeriod: const Duration(milliseconds: 120),
           )
           .listen((position) {
             final hasPendingResume =
@@ -1449,9 +1449,11 @@ class PlaybackController extends Notifier<PlaybackState> {
     var nextCurrentIndex = state.currentIndex;
     if (state.currentIndex == oldIndex) {
       nextCurrentIndex = newIndex;
-    } else if (oldIndex < state.currentIndex && newIndex >= state.currentIndex) {
+    } else if (oldIndex < state.currentIndex &&
+        newIndex >= state.currentIndex) {
       nextCurrentIndex--;
-    } else if (oldIndex > state.currentIndex && newIndex <= state.currentIndex) {
+    } else if (oldIndex > state.currentIndex &&
+        newIndex <= state.currentIndex) {
       nextCurrentIndex++;
     }
 

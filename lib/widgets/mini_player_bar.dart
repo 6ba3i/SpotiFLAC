@@ -47,6 +47,7 @@ class MiniPlayerBar extends ConsumerWidget {
       playbackProvider.select(
         (s) => (
           currentItem: s.currentItem,
+          queueLength: s.queue.length,
           isPlaying: s.isPlaying,
           isBuffering: s.isBuffering,
           isLoading: s.isLoading,
@@ -127,6 +128,15 @@ class MiniPlayerBar extends ConsumerWidget {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  if (stateSnapshot.queueLength > 1)
+                    IconButton(
+                      icon: const Icon(Icons.queue_music_rounded, size: 20),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _showPlaybackQueueSheet(context),
+                      tooltip: context.l10n.queueTrackCount(
+                        stateSnapshot.queueLength,
                       ),
                     ),
                   // Play / Pause
@@ -244,8 +254,8 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
       onResume: () {
         _isAppResumed = true;
         if (!mounted) return;
-        final state = ref.read(playbackProvider);
-        _prefetchLyricsForCurrentTrack(state);
+        final item = ref.read(playbackProvider.select((s) => s.currentItem));
+        _prefetchLyricsForCurrentTrack(item);
       },
       onPause: () => _isAppResumed = false,
       onHide: () => _isAppResumed = false,
@@ -266,9 +276,8 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
     return '${item.id}|${item.title}|${item.artist}';
   }
 
-  void _prefetchLyricsForCurrentTrack(PlaybackState state) {
+  void _prefetchLyricsForCurrentTrack(PlaybackItem? item) {
     if (!_isAppResumed) return;
-    final item = state.currentItem;
     if (item == null) return;
 
     final key = _lyricsPrefetchKey(item);
@@ -316,7 +325,17 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(playbackProvider);
+    final chromeSnapshot = ref.watch(
+      playbackProvider.select(
+        (s) => (
+          currentItem: s.currentItem,
+          queueLength: s.queue.length,
+          currentIndex: s.currentIndex,
+          error: s.error,
+          errorType: s.errorType,
+        ),
+      ),
+    );
     final playbackNotifier = ref.read(playbackProvider.notifier);
     final displayOrder = playbackNotifier.getQueueDisplayOrder();
     final displayPosition = playbackNotifier.getCurrentDisplayQueuePosition(
@@ -324,9 +343,13 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
     );
     final queuePositionLabel = displayPosition >= 0
         ? displayPosition + 1
-        : state.currentIndex + 1;
-    final playbackError = _localizedPlaybackError(context, state);
-    final item = state.currentItem;
+        : chromeSnapshot.currentIndex + 1;
+    final playbackError = _localizedPlaybackErrorFromRaw(
+      context,
+      chromeSnapshot.error,
+      chromeSnapshot.errorType,
+    );
+    final item = chromeSnapshot.currentItem;
     if (item == null) {
       _lastLyricsPrefetchKey = null;
       // Track stopped, close the player
@@ -335,26 +358,13 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
       });
       return const SizedBox.shrink();
     }
-    _prefetchLyricsForCurrentTrack(state);
+    _prefetchLyricsForCurrentTrack(item);
     final extensionId = _playbackItemExtensionId(item);
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final screenSize = MediaQuery.sizeOf(context);
     final isLandscape = screenSize.width > screenSize.height;
-
-    final duration = state.duration;
-    final position = state.position;
-    final maxSeconds = duration.inMilliseconds > 0
-        ? duration.inSeconds.toDouble()
-        : 0.0;
-    final currentSeconds = position.inSeconds.toDouble().clamp(
-      0.0,
-      maxSeconds > 0 ? maxSeconds : 0.0,
-    );
-    final sliderSeconds = _isScrubbing
-        ? _scrubSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 0.0)
-        : currentSeconds;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -389,88 +399,98 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
                         ),
                         child: Row(
                           children: [
-                            // ── Left side
+                            IconButton(
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 30,
+                              ),
+                              visualDensity: isCompactLayout
+                                  ? VisualDensity.compact
+                                  : VisualDensity.standard,
+                              onPressed: () => Navigator.of(context).pop(),
+                              tooltip: 'Close',
+                            ),
                             Expanded(
                               child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  icon: const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    size: 30,
+                                alignment: Alignment.center,
+                                child: chromeSnapshot.queueLength > 1
+                                    ? GestureDetector(
+                                        onTap: () =>
+                                            _showPlaybackQueueSheet(context),
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 148,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colorScheme.primaryContainer
+                                                .withValues(alpha: 0.5),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.queue_music_rounded,
+                                                size: 16,
+                                                color: colorScheme
+                                                    .onPrimaryContainer,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  '$queuePositionLabel / ${chromeSnapshot.queueLength}',
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: textTheme.labelMedium
+                                                      ?.copyWith(
+                                                        color: colorScheme
+                                                            .onPrimaryContainer,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!item.isLocal && item.track != null)
+                                  _DownloadButton(
+                                    item: item,
+                                    compact: isCompactLayout,
                                   ),
+                                IconButton(
                                   visualDensity: isCompactLayout
                                       ? VisualDensity.compact
                                       : VisualDensity.standard,
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  tooltip: 'Close',
+                                  icon: Icon(
+                                    Icons.lyrics_outlined,
+                                    color: _currentPage == 1
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurfaceVariant,
+                                  ),
+                                  onPressed: () {
+                                    if (_currentPage == 0) {
+                                      _switchToLyrics();
+                                    } else {
+                                      _switchToCover();
+                                    }
+                                  },
+                                  tooltip: 'Lyrics',
                                 ),
-                              ),
-                            ),
-                            // ── Center: Queue info
-                            if (state.queue.length > 1)
-                              GestureDetector(
-                                onTap: () => _showQueueSheet(context, ref),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primaryContainer
-                                        .withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.queue_music_rounded,
-                                        size: 16,
-                                        color: colorScheme.onPrimaryContainer,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '$queuePositionLabel / ${state.queue.length}',
-                                        style: textTheme.labelMedium?.copyWith(
-                                          color: colorScheme.onPrimaryContainer,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            // ── Right side
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (!item.isLocal && item.track != null)
-                                    _DownloadButton(
-                                      item: item,
-                                      compact: isCompactLayout,
-                                    ),
-                                  IconButton(
-                                    visualDensity: isCompactLayout
-                                        ? VisualDensity.compact
-                                        : VisualDensity.standard,
-                                    icon: Icon(
-                                      Icons.lyrics_outlined,
-                                      color: _currentPage == 1
-                                          ? colorScheme.primary
-                                          : colorScheme.onSurfaceVariant,
-                                    ),
-                                    onPressed: () {
-                                      if (_currentPage == 0) {
-                                        _switchToLyrics();
-                                      } else {
-                                        _switchToCover();
-                                      }
-                                    },
-                                    tooltip: 'Lyrics',
-                                  ),
-                                ],
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -488,18 +508,7 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
                           // Page 0: Cover art
                           _CoverArtPage(item: item, colorScheme: colorScheme),
                           // Page 1: Lyrics
-                          _LyricsPage(
-                            state: state,
-                            colorScheme: colorScheme,
-                            onRetry: () => ref
-                                .read(playbackProvider.notifier)
-                                .refetchLyrics(),
-                            onSeek: state.seekSupported
-                                ? (ms) => ref
-                                      .read(playbackProvider.notifier)
-                                      .seek(Duration(milliseconds: ms))
-                                : null,
-                          ),
+                          _LyricsPage(colorScheme: colorScheme),
                         ],
                       ),
                     ),
@@ -645,94 +654,129 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
                         ),
                       ),
 
-                    // ── Seek slider
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isCompactLayout ? 12 : 16,
-                      ),
-                      child: SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 3,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 6,
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final progressState = ref.watch(
+                          playbackProvider.select(
+                            (s) => (
+                              position: s.position,
+                              duration: s.duration,
+                              seekSupported: s.seekSupported,
+                            ),
                           ),
-                          overlayShape: const RoundSliderOverlayShape(
-                            overlayRadius: 14,
-                          ),
-                          activeTrackColor: colorScheme.primary,
-                          inactiveTrackColor: colorScheme.primary.withValues(
-                            alpha: 0.15,
-                          ),
-                        ),
-                        child: Slider(
-                          value: sliderSeconds,
-                          max: maxSeconds > 0 ? maxSeconds : 1,
-                          onChangeStart: state.seekSupported && maxSeconds > 0
-                              ? (value) {
-                                  setState(() {
-                                    _isScrubbing = true;
-                                    _scrubSeconds = value;
-                                  });
-                                }
-                              : null,
-                          onChanged: state.seekSupported
-                              ? (value) {
-                                  if (!_isScrubbing) {
-                                    setState(() {
-                                      _isScrubbing = true;
-                                    });
-                                  }
-                                  setState(() {
-                                    _scrubSeconds = value;
-                                  });
-                                }
-                              : null,
-                          onChangeEnd: state.seekSupported
-                              ? (value) async {
-                                  setState(() {
-                                    _scrubSeconds = value;
-                                    _isScrubbing = false;
-                                  });
-                                  await ref
-                                      .read(playbackProvider.notifier)
-                                      .seek(
-                                        Duration(
-                                          milliseconds: (value * 1000).round(),
-                                        ),
-                                      );
-                                }
-                              : null,
-                        ),
-                      ),
-                    ),
+                        );
+                        final duration = progressState.duration;
+                        final position = progressState.position;
+                        final maxSeconds = duration.inMilliseconds > 0
+                            ? duration.inSeconds.toDouble()
+                            : 0.0;
+                        final currentSeconds = position.inSeconds
+                            .toDouble()
+                            .clamp(0.0, maxSeconds > 0 ? maxSeconds : 0.0);
+                        final sliderSeconds = _isScrubbing
+                            ? _scrubSeconds.clamp(
+                                0.0,
+                                maxSeconds > 0 ? maxSeconds : 0.0,
+                              )
+                            : currentSeconds;
 
-                    // ── Duration labels
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(position),
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                        return Column(
+                          children: [
+                            // ── Seek slider
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isCompactLayout ? 12 : 16,
+                              ),
+                              child: SliderTheme(
+                                data: SliderThemeData(
+                                  trackHeight: 3,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 14,
+                                  ),
+                                  activeTrackColor: colorScheme.primary,
+                                  inactiveTrackColor: colorScheme.primary
+                                      .withValues(alpha: 0.15),
+                                ),
+                                child: Slider(
+                                  value: sliderSeconds,
+                                  max: maxSeconds > 0 ? maxSeconds : 1,
+                                  onChangeStart:
+                                      progressState.seekSupported &&
+                                          maxSeconds > 0
+                                      ? (value) {
+                                          setState(() {
+                                            _isScrubbing = true;
+                                            _scrubSeconds = value;
+                                          });
+                                        }
+                                      : null,
+                                  onChanged: progressState.seekSupported
+                                      ? (value) {
+                                          if (!_isScrubbing) {
+                                            setState(() {
+                                              _isScrubbing = true;
+                                            });
+                                          }
+                                          setState(() {
+                                            _scrubSeconds = value;
+                                          });
+                                        }
+                                      : null,
+                                  onChangeEnd: progressState.seekSupported
+                                      ? (value) async {
+                                          setState(() {
+                                            _scrubSeconds = value;
+                                            _isScrubbing = false;
+                                          });
+                                          await ref
+                                              .read(playbackProvider.notifier)
+                                              .seek(
+                                                Duration(
+                                                  milliseconds: (value * 1000)
+                                                      .round(),
+                                                ),
+                                              );
+                                        }
+                                      : null,
+                                ),
+                              ),
                             ),
-                          ),
-                          Text(
-                            _formatDuration(duration),
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+
+                            // ── Duration labels
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatDuration(position),
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatDuration(duration),
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        );
+                      },
                     ),
                     SizedBox(height: verticalGap),
 
                     // ── Playback controls
-                    _PlaybackControls(state: state, compact: isCompactLayout),
+                    _PlaybackControls(compact: isCompactLayout),
                     SizedBox(height: verticalGap),
                   ],
                 ),
@@ -750,23 +794,19 @@ class _FullScreenPlayerState extends ConsumerState<_FullScreenPlayer> {
     final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
-
-  void _showQueueSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _QueueBottomSheet(ref: ref),
-    );
-  }
 }
 
-String? _localizedPlaybackError(BuildContext context, PlaybackState state) {
-  return _localizedPlaybackErrorFromRaw(context, state.error, state.errorType);
+void _showPlaybackQueueSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const _QueueBottomSheet(),
+  );
 }
 
 String? _localizedPlaybackErrorFromRaw(
@@ -815,40 +855,49 @@ class _CoverArtPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: _CoverArt(
-            url: item.coverUrl,
-            isLocal: item.hasLocalCover,
-            size: double.infinity,
-            borderRadius: 20,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxSquareSide = constraints.biggest.shortestSide;
+        final side = (maxSquareSide - 64).clamp(120.0, maxSquareSide);
+        return Center(
+          child: RepaintBoundary(
+            child: SizedBox(
+              width: side,
+              height: side,
+              child: _CoverArt(
+                url: item.coverUrl,
+                isLocal: item.hasLocalCover,
+                size: side,
+                borderRadius: 20,
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 // ─── Lyrics Page ─────────────────────────────────────────────────────────────
-class _LyricsPage extends StatelessWidget {
-  final PlaybackState state;
+class _LyricsPage extends ConsumerWidget {
   final ColorScheme colorScheme;
-  final VoidCallback onRetry;
-  final ValueChanged<int>? onSeek;
 
-  const _LyricsPage({
-    required this.state,
-    required this.colorScheme,
-    required this.onRetry,
-    required this.onSeek,
-  });
+  const _LyricsPage({required this.colorScheme});
 
   @override
-  Widget build(BuildContext context) {
-    if (state.lyricsLoading) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lyricsState = ref.watch(
+      playbackProvider.select(
+        (s) => (
+          lyricsLoading: s.lyricsLoading,
+          lyrics: s.lyrics,
+          positionMs: s.position.inMilliseconds,
+          seekSupported: s.seekSupported,
+        ),
+      ),
+    );
+
+    if (lyricsState.lyricsLoading) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -870,7 +919,7 @@ class _LyricsPage extends StatelessWidget {
       );
     }
 
-    final lyrics = state.lyrics;
+    final lyrics = lyricsState.lyrics;
     if (lyrics == null || lyrics.isEmpty) {
       return Center(
         child: Column(
@@ -890,7 +939,8 @@ class _LyricsPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: onRetry,
+              onPressed: () =>
+                  ref.read(playbackProvider.notifier).refetchLyrics(),
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Retry'),
             ),
@@ -925,9 +975,13 @@ class _LyricsPage extends StatelessWidget {
     if (lyrics.isSynced) {
       return _SyncedLyricsView(
         lyrics: lyrics,
-        positionMs: state.position.inMilliseconds,
+        positionMs: lyricsState.positionMs,
         colorScheme: colorScheme,
-        onSeek: onSeek,
+        onSeek: lyricsState.seekSupported
+            ? (ms) => ref
+                  .read(playbackProvider.notifier)
+                  .seek(Duration(milliseconds: ms))
+            : null,
       );
     }
 
@@ -1471,19 +1525,33 @@ class _DownloadButton extends ConsumerWidget {
 
 // ─── Playback Controls ───────────────────────────────────────────────────────
 class _PlaybackControls extends ConsumerWidget {
-  final PlaybackState state;
   final bool compact;
 
-  const _PlaybackControls({required this.state, this.compact = false});
+  const _PlaybackControls({this.compact = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final controlsState = ref.watch(
+      playbackProvider.select(
+        (s) => (
+          hasPrevious: s.hasPrevious,
+          hasNext: s.hasNext,
+          repeatMode: s.repeatMode,
+          shuffle: s.shuffle,
+          isPlaying: s.isPlaying,
+          isBuffering: s.isBuffering,
+          isLoading: s.isLoading,
+        ),
+      ),
+    );
     final colorScheme = Theme.of(context).colorScheme;
     final notifier = ref.read(playbackProvider.notifier);
     final hasPrev =
-        state.hasPrevious || state.repeatMode == playback_types.RepeatMode.all;
+        controlsState.hasPrevious ||
+        controlsState.repeatMode == playback_types.RepeatMode.all;
     final hasNext =
-        state.hasNext || state.repeatMode == playback_types.RepeatMode.all;
+        controlsState.hasNext ||
+        controlsState.repeatMode == playback_types.RepeatMode.all;
     final sideIconSize = compact ? 18.0 : 22.0;
     final skipIconSize = compact ? 28.0 : 32.0;
     final mainButtonSize = compact ? 54.0 : 64.0;
@@ -1500,7 +1568,7 @@ class _PlaybackControls extends ConsumerWidget {
               : VisualDensity.standard,
           icon: Icon(
             Icons.shuffle_rounded,
-            color: state.shuffle
+            color: controlsState.shuffle
                 ? colorScheme.primary
                 : colorScheme.onSurfaceVariant,
             size: sideIconSize,
@@ -1534,7 +1602,7 @@ class _PlaybackControls extends ConsumerWidget {
           child: IconButton.filled(
             iconSize: mainIconSize,
             onPressed: notifier.togglePlayPause,
-            icon: state.isBuffering || state.isLoading
+            icon: controlsState.isBuffering || controlsState.isLoading
                 ? SizedBox(
                     width: loadingSize,
                     height: loadingSize,
@@ -1544,7 +1612,7 @@ class _PlaybackControls extends ConsumerWidget {
                     ),
                   )
                 : Icon(
-                    state.isPlaying
+                    controlsState.isPlaying
                         ? Icons.pause_rounded
                         : Icons.play_arrow_rounded,
                   ),
@@ -1552,7 +1620,7 @@ class _PlaybackControls extends ConsumerWidget {
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
             ),
-            tooltip: state.isPlaying ? 'Pause' : 'Play',
+            tooltip: controlsState.isPlaying ? 'Pause' : 'Play',
           ),
         ),
         SizedBox(width: compact ? 4 : 8),
@@ -1580,16 +1648,16 @@ class _PlaybackControls extends ConsumerWidget {
               ? VisualDensity.compact
               : VisualDensity.standard,
           icon: Icon(
-            state.repeatMode == playback_types.RepeatMode.one
+            controlsState.repeatMode == playback_types.RepeatMode.one
                 ? Icons.repeat_one_rounded
                 : Icons.repeat_rounded,
-            color: state.repeatMode != playback_types.RepeatMode.off
+            color: controlsState.repeatMode != playback_types.RepeatMode.off
                 ? colorScheme.primary
                 : colorScheme.onSurfaceVariant,
             size: sideIconSize,
           ),
           onPressed: notifier.cycleRepeatMode,
-          tooltip: _repeatTooltip(state.repeatMode),
+          tooltip: _repeatTooltip(controlsState.repeatMode),
         ),
       ],
     );
@@ -1679,17 +1747,20 @@ class _CoverArt extends StatelessWidget {
 
 // ─── Queue Bottom Sheet ──────────────────────────────────────────────────────
 class _QueueBottomSheet extends ConsumerWidget {
-  final WidgetRef ref;
-
-  const _QueueBottomSheet({required this.ref});
+  const _QueueBottomSheet();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(playbackProvider);
+    final queueSnapshot = ref.watch(
+      playbackProvider.select(
+        (s) =>
+            (queue: s.queue, currentIndex: s.currentIndex, shuffle: s.shuffle),
+      ),
+    );
     final playbackNotifier = ref.read(playbackProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final queue = state.queue;
+    final queue = queueSnapshot.queue;
     final displayOrder = playbackNotifier.getQueueDisplayOrder();
     final currentDisplayIndex = playbackNotifier.getCurrentDisplayQueuePosition(
       displayOrder: displayOrder,
@@ -1723,36 +1794,45 @@ class _QueueBottomSheet extends ConsumerWidget {
             // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.queue_music_rounded,
-                    size: 22,
-                    color: colorScheme.primary,
-                  ),
-                  const SizedBox(width: 10),
                   Text(
-                    'Queue',
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${queue.length} tracks',
+                    context.l10n.queueTrackCount(queue.length),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  if (hasUpcoming) ...[
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () {
-                        ref.read(playbackProvider.notifier).clearUpcoming();
-                      },
-                      child: Text(context.l10n.queueClearAll),
-                    ),
-                  ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.queue_music_rounded,
+                        size: 22,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Queue',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      if (hasUpcoming)
+                        TextButton(
+                          onPressed: () {
+                            ref.read(playbackProvider.notifier).clearUpcoming();
+                          },
+                          child: Text(context.l10n.queueClearAll),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1776,7 +1856,8 @@ class _QueueBottomSheet extends ConsumerWidget {
                     queue,
                     displayOrder,
                     currentDisplayIndex,
-                    state,
+                    queueSnapshot.currentIndex,
+                    queueSnapshot.shuffle,
                     colorScheme,
                     textTheme,
                   );
@@ -1804,7 +1885,8 @@ class _QueueBottomSheet extends ConsumerWidget {
     List<PlaybackItem> queue,
     List<int> displayOrder,
     int currentDisplayIndex,
-    PlaybackState state,
+    int currentQueueIndex,
+    bool shuffleEnabled,
     ColorScheme colorScheme,
     TextTheme textTheme,
   ) {
@@ -1832,7 +1914,9 @@ class _QueueBottomSheet extends ConsumerWidget {
           queue[queueIdx],
           queueIdx,
           displayIdx,
-          state,
+          currentQueueIndex,
+          shuffleEnabled,
+          queue.length,
           colorScheme,
           textTheme,
           isPlayed: true,
@@ -1860,7 +1944,9 @@ class _QueueBottomSheet extends ConsumerWidget {
         queue[queueIdx],
         queueIdx,
         currentDisplayIndex,
-        state,
+        currentQueueIndex,
+        shuffleEnabled,
+        queue.length,
         colorScheme,
         textTheme,
         isCurrent: true,
@@ -1889,7 +1975,9 @@ class _QueueBottomSheet extends ConsumerWidget {
           queue[queueIdx],
           queueIdx,
           displayIdx,
-          state,
+          currentQueueIndex,
+          shuffleEnabled,
+          queue.length,
           colorScheme,
           textTheme,
         );
@@ -1938,7 +2026,9 @@ class _QueueBottomSheet extends ConsumerWidget {
     PlaybackItem item,
     int queueIndex,
     int displayIndex,
-    PlaybackState state,
+    int currentQueueIndex,
+    bool shuffleEnabled,
+    int queueLength,
     ColorScheme colorScheme,
     TextTheme textTheme, {
     bool isCurrent = false,
@@ -2031,7 +2121,7 @@ class _QueueBottomSheet extends ConsumerWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!state.shuffle) ...[
+                      if (!shuffleEnabled) ...[
                         IconButton(
                           icon: Icon(
                             Icons.keyboard_arrow_up_rounded,
@@ -2040,7 +2130,7 @@ class _QueueBottomSheet extends ConsumerWidget {
                               alpha: 0.8,
                             ),
                           ),
-                          onPressed: queueIndex > state.currentIndex + 1
+                          onPressed: queueIndex > currentQueueIndex + 1
                               ? () {
                                   ref
                                       .read(playbackProvider.notifier)
@@ -2057,7 +2147,7 @@ class _QueueBottomSheet extends ConsumerWidget {
                               alpha: 0.8,
                             ),
                           ),
-                          onPressed: queueIndex < state.queue.length - 1
+                          onPressed: queueIndex < queueLength - 1
                               ? () {
                                   ref
                                       .read(playbackProvider.notifier)

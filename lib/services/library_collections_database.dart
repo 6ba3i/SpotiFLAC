@@ -9,12 +9,13 @@ import 'package:spotiflac_android/utils/logger.dart';
 final _log = AppLogger('LibraryCollectionsDb');
 
 const _dbFileName = 'library_collections.db';
-const _dbVersion = 2;
+const _dbVersion = 3;
 
 const _tableWishlist = 'wishlist_tracks';
 const _tableLoved = 'loved_tracks';
 const _tablePlaylists = 'playlists';
 const _tablePlaylistTracks = 'playlist_tracks';
+const _tablePlaylistMirrors = 'playlist_mirrors';
 
 const _legacyCollectionsStorageKey = 'library_collections_v1';
 const _migrationDoneKey = 'library_collections_migrated_to_sqlite_v1';
@@ -24,12 +25,14 @@ class LibraryCollectionsSnapshot {
   final List<Map<String, dynamic>> lovedRows;
   final List<Map<String, dynamic>> playlistRows;
   final List<Map<String, dynamic>> playlistTrackRows;
+  final List<Map<String, dynamic>> playlistMirrorRows;
 
   const LibraryCollectionsSnapshot({
     required this.wishlistRows,
     required this.lovedRows,
     required this.playlistRows,
     required this.playlistTrackRows,
+    required this.playlistMirrorRows,
   });
 }
 
@@ -131,6 +134,16 @@ class LibraryCollectionsDatabase {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE $_tablePlaylistMirrors (
+        link_key TEXT PRIMARY KEY,
+        playlist_id TEXT NOT NULL,
+        source_name TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (playlist_id) REFERENCES $_tablePlaylists(id) ON DELETE CASCADE
+      )
+    ''');
+
     await db.execute(
       'CREATE INDEX idx_${_tableWishlist}_added_at ON $_tableWishlist(added_at DESC)',
     );
@@ -151,6 +164,9 @@ class LibraryCollectionsDatabase {
     );
     await db.execute(
       'CREATE INDEX idx_${_tablePlaylistTracks}_added_at ON $_tablePlaylistTracks(added_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_${_tablePlaylistMirrors}_playlist_id ON $_tablePlaylistMirrors(playlist_id)',
     );
   }
 
@@ -203,6 +219,20 @@ class LibraryCollectionsDatabase {
           );
         }
       }
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $_tablePlaylistMirrors (
+          link_key TEXT PRIMARY KEY,
+          playlist_id TEXT NOT NULL,
+          source_name TEXT NOT NULL DEFAULT '',
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (playlist_id) REFERENCES $_tablePlaylists(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_${_tablePlaylistMirrors}_playlist_id ON $_tablePlaylistMirrors(playlist_id)',
+      );
     }
   }
 
@@ -320,13 +350,33 @@ class LibraryCollectionsDatabase {
       _tablePlaylistTracks,
       orderBy: 'playlist_id ASC, sort_order ASC, added_at DESC, rowid DESC',
     );
+    final playlistMirrorRows = await db.query(
+      _tablePlaylistMirrors,
+      orderBy: 'updated_at DESC, rowid DESC',
+    );
 
     return LibraryCollectionsSnapshot(
       wishlistRows: wishlistRows,
       lovedRows: lovedRows,
       playlistRows: playlistRows,
       playlistTrackRows: playlistTrackRows,
+      playlistMirrorRows: playlistMirrorRows,
     );
+  }
+
+  Future<void> upsertPlaylistMirror({
+    required String linkKey,
+    required String playlistId,
+    required String sourceName,
+    required String updatedAt,
+  }) async {
+    final db = await database;
+    await db.insert(_tablePlaylistMirrors, {
+      'link_key': linkKey,
+      'playlist_id': playlistId,
+      'source_name': sourceName,
+      'updated_at': updatedAt,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<PlaylistPickerSummaryRow>> loadPlaylistPickerSummaries(

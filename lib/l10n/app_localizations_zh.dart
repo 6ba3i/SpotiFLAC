@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appName => 'SpotiFLAC';
+  String get appName => 'spotify+';
 
   @override
   String get navHome => 'Home';
@@ -37,6 +37,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeContinueListening => 'Continue listening';
+
+  @override
+  String get homePinnedCollections => 'Pinned collections';
 
   @override
   String get historyFilterAll => 'All';
@@ -2586,6 +2589,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get collectionUnpin => 'Unpin';
 
   @override
+  String get collectionAddToHome => 'Add to Home';
+
+  @override
+  String get collectionRemoveFromHome => 'Remove from Home';
+
+  @override
+  String collectionDownloadMissingCount(int count) {
+    return 'Download missing ($count)';
+  }
+
+  @override
   String get collectionReorderPlaylists => 'Reorder playlists';
 
   @override
@@ -3461,7 +3475,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   AppLocalizationsZhCn() : super('zh_CN');
 
   @override
-  String get appName => 'SpotiFLAC';
+  String get appName => 'spotify+';
 
   @override
   String get navHome => '主页';
@@ -5847,7 +5861,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   AppLocalizationsZhTw() : super('zh_TW');
 
   @override
-  String get appName => 'SpotiFLAC';
+  String get appName => 'spotify+';
 
   @override
   String get navHome => 'Home';
