@@ -37,6 +37,10 @@
   "@homeRecent": {
     "description": "Section header for recent searches"
   },
+  "homeContinueListening": "Continue listening",
+  "@homeContinueListening": {
+    "description": "Home card title to resume the last playback session"
+  },
   "historyFilterAll": "All",
   "@historyFilterAll": {
     "description": "Filter chip - show all items"
@@ -3343,6 +3347,24 @@
       }
     }
   },
+  "collectionInLibraryCount": "{count, plural, =1{1 in library} other{{count} in library}}",
+  "@collectionInLibraryCount": {
+    "description": "Count of playlist tracks currently available in the library",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionMissingCount": "{count, plural, =1{1 missing} other{{count} missing}}",
+  "@collectionMissingCount": {
+    "description": "Count of playlist tracks missing from local/downloaded library",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "collectionAddedToPlaylist": "Added to \"{playlistName}\"",
   "@collectionAddedToPlaylist": {
     "description": "Snackbar after adding track to playlist",
@@ -3376,6 +3398,22 @@
   "collectionRenamePlaylist": "Rename playlist",
   "@collectionRenamePlaylist": {
     "description": "Action to rename playlist"
+  },
+  "collectionPinToTop": "Pin to top",
+  "@collectionPinToTop": {
+    "description": "Action to pin a playlist so it appears first"
+  },
+  "collectionUnpin": "Unpin",
+  "@collectionUnpin": {
+    "description": "Action to remove a playlist pin"
+  },
+  "collectionReorderPlaylists": "Reorder playlists",
+  "@collectionReorderPlaylists": {
+    "description": "Tooltip label when entering playlist reorder mode"
+  },
+  "collectionDoneReordering": "Done reordering",
+  "@collectionDoneReordering": {
+    "description": "Tooltip label when exiting playlist reorder mode"
   },
   "collectionDeletePlaylist": "Delete playlist",
   "@collectionDeletePlaylist": {

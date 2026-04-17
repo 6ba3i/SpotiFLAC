@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/models/playback_item.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
@@ -15,12 +16,14 @@ import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/recent_access_provider.dart';
 import 'package:spotiflac_android/providers/explore_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
+import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/screens/album_screen.dart';
 import 'package:spotiflac_android/screens/artist_screen.dart';
 import 'package:spotiflac_android/services/csv_import_service.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/services/shell_navigation_service.dart';
 import 'package:spotiflac_android/utils/app_bar_layout.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
@@ -1197,7 +1200,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     content: Text(queueSnackbarMessage),
                     action: SnackBarAction(
                       label: l10n.snackbarViewQueue,
-                      onPressed: () {},
+                      onPressed: ShellNavigationService.openLibraryTab,
                     ),
                   ),
                 );
@@ -1214,7 +1217,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                 content: Text(queueSnackbarMessage),
                 action: SnackBarAction(
                   label: l10n.snackbarViewQueue,
-                  onPressed: () {},
+                  onPressed: ShellNavigationService.openLibraryTab,
                 ),
               ),
             );
@@ -1273,12 +1276,25 @@ class _HomeTabState extends ConsumerState<HomeTab>
     final screenHeight = mediaQuery.size.height;
     final topPadding = normalizedHeaderTopPadding(context);
     final historyItems = ref.watch(_homeHistoryPreviewProvider);
-
+    final playbackSnapshot = ref.watch(
+      playbackProvider.select(
+        (s) => (
+          currentItem: s.currentItem,
+          isPlaying: s.isPlaying,
+          position: s.position,
+          duration: s.duration,
+        ),
+      ),
+    );
     final recentModeRequested = isShowingRecentAccess || isSearchFocused;
     final showRecentAccess =
         recentModeRequested &&
         (!hasSearchInput || hasShortSearchInput || !hasActualResults) &&
         !isLoading;
+    final canShowContinueCard =
+        !hasSearchInput &&
+        !showRecentAccess &&
+        playbackSnapshot.currentItem != null;
     final hasResults =
         hasSearchInput || hasActualResults || isLoading || showRecentAccess;
     final showExplore =
@@ -1431,6 +1447,20 @@ class _HomeTabState extends ConsumerState<HomeTab>
                   child: _buildSearchBar(colorScheme),
                 ),
               ),
+
+              if (canShowContinueCard)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                    child: _buildContinueListeningCard(
+                      colorScheme,
+                      playbackSnapshot.currentItem!,
+                      playbackSnapshot.position,
+                      playbackSnapshot.duration,
+                      playbackSnapshot.isPlaying,
+                    ),
+                  ),
+                ),
 
               if (hasActualResults && !showRecentAccess)
                 Consumer(
@@ -1621,6 +1651,142 @@ class _HomeTabState extends ConsumerState<HomeTab>
         setState(() {});
       }
     });
+  }
+
+  String _formatPlaybackTimestamp(Duration value) {
+    final totalSeconds = value.inSeconds.clamp(0, 359999);
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildContinueListeningCard(
+    ColorScheme colorScheme,
+    PlaybackItem item,
+    Duration position,
+    Duration duration,
+    bool isPlaying,
+  ) {
+    final safeDuration = duration > Duration.zero
+        ? duration
+        : Duration(milliseconds: item.durationMs);
+    final clampedPosition = position <= safeDuration ? position : safeDuration;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          if (!isPlaying) {
+            ref.read(playbackProvider.notifier).togglePlayPause();
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              _buildContinueCover(item, colorScheme),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.homeContinueListening,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${_formatPlaybackTimestamp(clampedPosition)} / ${_formatPlaybackTimestamp(safeDuration)}',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: () {
+                  ref.read(playbackProvider.notifier).togglePlayPause();
+                },
+                icon: Icon(
+                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContinueCover(PlaybackItem item, ColorScheme colorScheme) {
+    final cover = item.coverUrl.trim();
+    final fallback = Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.music_note_rounded, color: colorScheme.onSurfaceVariant),
+    );
+
+    if (cover.isEmpty) {
+      return fallback;
+    }
+
+    if (item.hasLocalCover) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          File(cover),
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: CachedNetworkImage(
+        imageUrl: cover,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        memCacheWidth: 224,
+        memCacheHeight: 224,
+        cacheManager: CoverCacheManager.instance,
+        errorWidget: (_, _, _) => fallback,
+      ),
+    );
   }
 
   Widget _buildRecentDownloads(

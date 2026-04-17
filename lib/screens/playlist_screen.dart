@@ -6,7 +6,6 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
-import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
@@ -17,6 +16,16 @@ import 'package:spotiflac_android/widgets/download_service_picker.dart';
 import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
+
+enum _CollectionSortMode {
+  defaultOrder,
+  titleAz,
+  titleZa,
+  artistAz,
+  artistZa,
+  durationShort,
+  durationLong,
+}
 
 class PlaylistScreen extends ConsumerStatefulWidget {
   final String playlistName;
@@ -46,6 +55,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   String? _error;
   String? _resolvedPlaylistName;
   String? _resolvedCoverUrl;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  _CollectionSortMode _sortMode = _CollectionSortMode.defaultOrder;
 
   List<Track> get _tracks => _fetchedTracks ?? widget.tracks;
   String get _playlistName => _resolvedPlaylistName ?? widget.playlistName;
@@ -78,6 +90,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
     _fetchTracksIfNeeded();
   }
 
@@ -85,7 +102,53 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  List<Track> get _visibleTracks {
+    final query = _searchQuery;
+    var filtered = _tracks;
+    if (query.isNotEmpty) {
+      filtered = _tracks.where((track) {
+        return track.name.toLowerCase().contains(query) ||
+            track.artistName.toLowerCase().contains(query) ||
+            track.albumName.toLowerCase().contains(query);
+      }).toList(growable: false);
+    }
+
+    if (_sortMode == _CollectionSortMode.defaultOrder) {
+      return filtered;
+    }
+
+    final sorted = [...filtered];
+    switch (_sortMode) {
+      case _CollectionSortMode.defaultOrder:
+        break;
+      case _CollectionSortMode.titleAz:
+        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case _CollectionSortMode.titleZa:
+        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case _CollectionSortMode.artistAz:
+        sorted.sort(
+          (a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()),
+        );
+        break;
+      case _CollectionSortMode.artistZa:
+        sorted.sort(
+          (a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()),
+        );
+        break;
+      case _CollectionSortMode.durationShort:
+        sorted.sort((a, b) => a.duration.compareTo(b.duration));
+        break;
+      case _CollectionSortMode.durationLong:
+        sorted.sort((a, b) => b.duration.compareTo(a.duration));
+        break;
+    }
+    return sorted;
   }
 
   Future<void> _fetchTracksIfNeeded() async {
@@ -208,6 +271,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         slivers: [
           _buildAppBar(context, colorScheme),
           _buildInfoCard(context, colorScheme),
+          _buildSearchSortBar(context, colorScheme),
           _buildTrackList(context, colorScheme),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
@@ -344,13 +408,14 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 12,
+                            runSpacing: 10,
                             children: [
-                              _buildLoveAllButton(),
-                              const SizedBox(width: 12),
+                              _buildShufflePlayButton(),
+                              _buildPlayAllCenterButton(),
                               _buildDownloadAllCenterButton(context),
-                              const SizedBox(width: 12),
                               _buildAddToPlaylistButton(context),
                             ],
                           ),
@@ -384,7 +449,56 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     return const SliverToBoxAdapter(child: SizedBox.shrink());
   }
 
+  Widget _buildSearchSortBar(BuildContext context, ColorScheme colorScheme) {
+    if (_isLoading || _tracks.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    final hintStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: colorScheme.onSurfaceVariant,
+    );
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: context.l10n.homeSubtitle,
+                  hintStyle: hintStyle,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          onPressed: () => _searchController.clear(),
+                          icon: const Icon(Icons.close_rounded),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHigh,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: context.l10n.searchSortTitle,
+              onPressed: _showSortSheet,
+              icon: const Icon(Icons.sort_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTrackList(BuildContext context, ColorScheme colorScheme) {
+    final visibleTracks = _visibleTracks;
     if (_isLoading) {
       return const SliverToBoxAdapter(
         child: Padding(
@@ -434,9 +548,24 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       );
     }
 
+    if (visibleTracks.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Text(
+              context.l10n.errorNoTracksFound,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final track = _tracks[index];
+        final track = visibleTracks[index];
         return KeyedSubtree(
           key: ValueKey(track.id),
           child: StaggeredListItem(
@@ -447,7 +576,61 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             ),
           ),
         );
-      }, childCount: _tracks.length),
+      }, childCount: visibleTracks.length),
+    );
+  }
+
+  String _sortLabel(_CollectionSortMode mode, BuildContext context) {
+    return switch (mode) {
+      _CollectionSortMode.defaultOrder => context.l10n.searchSortDefault,
+      _CollectionSortMode.titleAz => context.l10n.searchSortTitleAZ,
+      _CollectionSortMode.titleZa => context.l10n.searchSortTitleZA,
+      _CollectionSortMode.artistAz => context.l10n.searchSortArtistAZ,
+      _CollectionSortMode.artistZa => context.l10n.searchSortArtistZA,
+      _CollectionSortMode.durationShort => context.l10n.searchSortDurationShort,
+      _CollectionSortMode.durationLong => context.l10n.searchSortDurationLong,
+    };
+  }
+
+  Future<void> _showSortSheet() async {
+    final colorScheme = Theme.of(context).colorScheme;
+    var selected = _sortMode;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setStateSheet) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final mode in _CollectionSortMode.values)
+                  ListTile(
+                    onTap: () => setStateSheet(() => selected = mode),
+                    leading: Icon(
+                      mode == selected
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                    ),
+                    title: Text(_sortLabel(mode, ctx)),
+                  ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: FilledButton(
+                    onPressed: () {
+                      setState(() => _sortMode = selected);
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(context.l10n.dialogSave),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -516,42 +699,33 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     );
   }
 
-  Widget _buildLoveAllButton() {
-    final collectionsState = ref.watch(libraryCollectionsProvider);
-    final allLoved =
-        _tracks.isNotEmpty && _tracks.every((t) => collectionsState.isLoved(t));
-
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.15),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: IconButton(
-        onPressed: _tracks.isEmpty ? null : () => _loveAll(_tracks),
-        icon: Icon(
-          allLoved ? Icons.favorite : Icons.favorite_border,
-          size: 22,
-          color: allLoved ? Colors.redAccent : Colors.white,
-        ),
-        tooltip: allLoved
-            ? context.l10n.trackOptionRemoveFromLoved
-            : context.l10n.tooltipLoveAll,
-        padding: EdgeInsets.zero,
-      ),
-    );
-  }
-
   Widget _buildDownloadAllCenterButton(BuildContext context) {
     return FilledButton.icon(
       onPressed: _tracks.isEmpty ? null : () => _confirmDownloadAll(context),
       icon: const Icon(Icons.download_rounded, size: 18),
       label: Text(context.l10n.downloadAllCount(_tracks.length)),
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        minimumSize: const Size(0, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+    );
+  }
+
+  Widget _buildShufflePlayButton() {
+    return _buildCircleButton(
+      icon: Icons.shuffle_rounded,
+      tooltip: context.l10n.tooltipPlay,
+      onPressed: _visibleTracks.isEmpty ? null : _shufflePlay,
+    );
+  }
+
+  Widget _buildPlayAllCenterButton() {
+    return FilledButton.icon(
+      onPressed: _visibleTracks.isEmpty ? null : _playAll,
+      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+      label: Text(context.l10n.tooltipPlay),
       style: FilledButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -604,45 +778,37 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     );
   }
 
-  Future<void> _loveAll(List<Track> tracks) async {
-    final notifier = ref.read(libraryCollectionsProvider.notifier);
-    final state = ref.read(libraryCollectionsProvider);
-    final allLoved = tracks.every((t) => state.isLoved(t));
-
-    if (allLoved) {
-      for (final track in tracks) {
-        final key = trackCollectionKey(track);
-        await notifier.removeFromLoved(key);
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.l10n.snackbarRemovedTracksFromLoved(tracks.length),
-            ),
-          ),
-        );
-      }
-    } else {
-      int addedCount = 0;
-      for (final track in tracks) {
-        if (!state.isLoved(track)) {
-          await notifier.toggleLoved(track);
-          addedCount++;
-        }
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.snackbarAddedTracksToLoved(addedCount)),
-          ),
-        );
-      }
-    }
-  }
-
   void _downloadAll(BuildContext context) {
     _downloadTracks(context, _tracks);
+  }
+
+  void _shufflePlay() {
+    final tracks = _visibleTracks;
+    if (tracks.isEmpty) return;
+    final shuffled = [...tracks]..shuffle();
+    ref
+        .read(playbackProvider.notifier)
+        .playTrackList(shuffled)
+        .catchError((Object e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
+      );
+    });
+  }
+
+  void _playAll() {
+    final tracks = _visibleTracks;
+    if (tracks.isEmpty) return;
+    ref
+        .read(playbackProvider.notifier)
+        .playTrackList(tracks)
+        .catchError((Object e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
+      );
+    });
   }
 
   void _downloadTracks(BuildContext context, List<Track> tracks) {

@@ -23,17 +23,20 @@ class CollectionTrackEntry {
   final String key;
   final Track track;
   final DateTime addedAt;
+  final int sortOrder;
 
   const CollectionTrackEntry({
     required this.key,
     required this.track,
     required this.addedAt,
+    this.sortOrder = 0,
   });
 
   Map<String, dynamic> toJson() => {
     'key': key,
     'track': track.toJson(),
     'addedAt': addedAt.toIso8601String(),
+    'sortOrder': sortOrder,
   };
 
   factory CollectionTrackEntry.fromJson(Map<String, dynamic> json) {
@@ -42,6 +45,7 @@ class CollectionTrackEntry {
       key: json['key'] as String,
       track: Track.fromJson(Map<String, dynamic>.from(json['track'] as Map)),
       addedAt: DateTime.tryParse(addedAtRaw ?? '') ?? DateTime.now(),
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -50,6 +54,7 @@ class UserPlaylistCollection {
   final String id;
   final String name;
   final String? coverImagePath;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<CollectionTrackEntry> tracks;
@@ -59,6 +64,7 @@ class UserPlaylistCollection {
     required this.id,
     required this.name,
     this.coverImagePath,
+    this.sortOrder = 0,
     required this.createdAt,
     required this.updatedAt,
     required this.tracks,
@@ -69,6 +75,7 @@ class UserPlaylistCollection {
     String? id,
     String? name,
     String? Function()? coverImagePath,
+    int? sortOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<CollectionTrackEntry>? tracks,
@@ -81,6 +88,7 @@ class UserPlaylistCollection {
       coverImagePath: coverImagePath != null
           ? coverImagePath()
           : this.coverImagePath,
+      sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tracks: nextTracks,
@@ -101,6 +109,7 @@ class UserPlaylistCollection {
     'id': id,
     'name': name,
     if (coverImagePath != null) 'coverImagePath': coverImagePath,
+    'sortOrder': sortOrder,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
     'tracks': tracks.map((e) => e.toJson()).toList(),
@@ -116,6 +125,7 @@ class UserPlaylistCollection {
       id: json['id'] as String,
       name: json['name'] as String? ?? '',
       coverImagePath: json['coverImagePath'] as String?,
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
       createdAt: createdAt,
       updatedAt: updatedAt,
       tracks: tracksRaw
@@ -385,6 +395,7 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
             id: id,
             name: row['name'] as String? ?? '',
             coverImagePath: row['cover_image_path'] as String?,
+            sortOrder: (row['sort_order'] as num?)?.toInt() ?? playlists.length,
             createdAt: createdAt,
             updatedAt: updatedAt,
             tracks: tracksByPlaylist[id] ?? const <CollectionTrackEntry>[],
@@ -408,6 +419,29 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     await (_loadFuture ?? _load());
   }
 
+  List<UserPlaylistCollection> _reindexPlaylists(
+    List<UserPlaylistCollection> playlists,
+  ) {
+    return [
+      for (var i = 0; i < playlists.length; i++)
+        playlists[i].copyWith(sortOrder: i),
+    ];
+  }
+
+  List<CollectionTrackEntry> _reindexTrackEntries(
+    List<CollectionTrackEntry> tracks,
+  ) {
+    return [
+      for (var i = 0; i < tracks.length; i++)
+        CollectionTrackEntry(
+          key: tracks[i].key,
+          track: tracks[i].track,
+          addedAt: tracks[i].addedAt,
+          sortOrder: i,
+        ),
+    ];
+  }
+
   CollectionTrackEntry? _parseTrackEntryRow(Map<String, dynamic> row) {
     final key = row['track_key'] as String?;
     final trackJson = row['track_json'] as String?;
@@ -424,6 +458,7 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
         key: key,
         track: track,
         addedAt: DateTime.tryParse(addedAtRaw ?? '') ?? DateTime.now(),
+        sortOrder: (row['sort_order'] as num?)?.toInt() ?? 0,
       );
     } catch (_) {
       return null;
@@ -534,10 +569,12 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     final playlist = UserPlaylistCollection(
       id: id,
       name: trimmedName,
+      sortOrder: 0,
       createdAt: now,
       updatedAt: now,
       tracks: const [],
     );
+    final updatedPlaylists = _reindexPlaylists([playlist, ...state.playlists]);
 
     await _db.upsertPlaylist(
       id: id,
@@ -545,8 +582,13 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
       coverImagePath: null,
       createdAt: now.toIso8601String(),
       updatedAt: now.toIso8601String(),
+      sortOrder: 0,
     );
-    state = state.copyWith(playlists: [playlist, ...state.playlists]);
+    await _db.reorderPlaylists(
+      playlistIdsInOrder: updatedPlaylists.map((e) => e.id).toList(),
+      updatedAt: now.toIso8601String(),
+    );
+    state = state.copyWith(playlists: updatedPlaylists);
     _invalidatePlaylistPickerSummaries();
     return id;
   }
@@ -575,8 +617,17 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     final playlistIndex = state.playlists.indexWhere((p) => p.id == playlistId);
     if (playlistIndex < 0) return;
 
+    final now = DateTime.now();
     await _db.deletePlaylist(playlistId);
-    final updatedPlaylists = [...state.playlists]..removeAt(playlistIndex);
+    final updatedPlaylists = _reindexPlaylists(
+      [...state.playlists]..removeAt(playlistIndex),
+    );
+    if (updatedPlaylists.isNotEmpty) {
+      await _db.reorderPlaylists(
+        playlistIdsInOrder: updatedPlaylists.map((e) => e.id).toList(),
+        updatedAt: now.toIso8601String(),
+      );
+    }
     state = state.copyWith(playlists: updatedPlaylists);
     _invalidatePlaylistPickerSummaries();
   }
@@ -590,18 +641,30 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     if (playlist.containsTrackKey(key)) return false;
 
     final now = DateTime.now();
-    final entry = CollectionTrackEntry(key: key, track: track, addedAt: now);
+    final entry = CollectionTrackEntry(
+      key: key,
+      track: track,
+      addedAt: now,
+      sortOrder: 0,
+    );
+    final reorderedTracks = _reindexTrackEntries([entry, ...playlist.tracks]);
     await _db.upsertPlaylistTrack(
       playlistId: playlistId,
       trackKey: key,
       trackJson: jsonEncode(track.toJson()),
+      sortOrder: 0,
       addedAt: entry.addedAt.toIso8601String(),
+      playlistUpdatedAt: now.toIso8601String(),
+    );
+    await _db.reorderPlaylistTracks(
+      playlistId: playlistId,
+      trackKeysInOrder: reorderedTracks.map((e) => e.key).toList(growable: false),
       playlistUpdatedAt: now.toIso8601String(),
     );
     final changed = _replacePlaylistById(playlistId, (playlist) {
       if (playlist.containsTrackKey(key)) return playlist;
       return playlist.copyWith(
-        tracks: [entry, ...playlist.tracks],
+        tracks: reorderedTracks,
         updatedAt: now,
       );
     });
@@ -636,7 +699,12 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
       }
 
       entriesToAdd.add(
-        CollectionTrackEntry(key: key, track: track, addedAt: now),
+        CollectionTrackEntry(
+          key: key,
+          track: track,
+          addedAt: now,
+          sortOrder: 0,
+        ),
       );
     }
 
@@ -647,6 +715,14 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
       );
     }
 
+    final reorderedTracks = _reindexTrackEntries([
+      ...entriesToAdd.reversed,
+      ...playlist.tracks,
+    ]);
+    final insertedSortOrders = <String, int>{
+      for (final entry in reorderedTracks) entry.key: entry.sortOrder,
+    };
+
     await _db.upsertPlaylistTracksBatch(
       playlistId: playlistId,
       playlistUpdatedAt: now.toIso8601String(),
@@ -655,14 +731,20 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
             (entry) => <String, String>{
               'track_key': entry.key,
               'track_json': jsonEncode(entry.track.toJson()),
+              'sort_order': '${insertedSortOrders[entry.key] ?? 0}',
               'added_at': entry.addedAt.toIso8601String(),
             },
           )
           .toList(growable: false),
     );
+    await _db.reorderPlaylistTracks(
+      playlistId: playlistId,
+      trackKeysInOrder: reorderedTracks.map((e) => e.key).toList(growable: false),
+      playlistUpdatedAt: now.toIso8601String(),
+    );
     final changed = _replacePlaylistById(playlistId, (current) {
       return current.copyWith(
-        tracks: [...entriesToAdd.reversed, ...current.tracks],
+        tracks: reorderedTracks,
         updatedAt: now,
       );
     });
@@ -693,12 +775,84 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
       trackKey: trackKey,
       playlistUpdatedAt: now.toIso8601String(),
     );
-    _replacePlaylistById(playlistId, (playlist) {
-      final nextTracks = playlist.tracks
+    final nextTracks = _reindexTrackEntries(
+      playlist.tracks
           .where((entry) => entry.key != trackKey)
-          .toList(growable: false);
+          .toList(growable: false),
+    );
+    if (nextTracks.isNotEmpty) {
+      await _db.reorderPlaylistTracks(
+        playlistId: playlistId,
+        trackKeysInOrder: nextTracks.map((e) => e.key).toList(growable: false),
+        playlistUpdatedAt: now.toIso8601String(),
+      );
+    }
+    _replacePlaylistById(playlistId, (playlist) {
       if (nextTracks.length == playlist.tracks.length) return playlist;
       return playlist.copyWith(tracks: nextTracks, updatedAt: now);
+    });
+    _invalidatePlaylistPickerSummaries();
+  }
+
+  Future<void> reorderPlaylists(int oldIndex, int newIndex) async {
+    await _ensureLoaded();
+    if (oldIndex < 0 ||
+        oldIndex >= state.playlists.length ||
+        newIndex < 0 ||
+        newIndex > state.playlists.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final updatedPlaylists = [...state.playlists];
+    final moved = updatedPlaylists.removeAt(oldIndex);
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    updatedPlaylists.insert(newIndex, moved);
+
+    final reindexed = _reindexPlaylists(updatedPlaylists);
+    await _db.reorderPlaylists(
+      playlistIdsInOrder: reindexed.map((e) => e.id).toList(growable: false),
+      updatedAt: now.toIso8601String(),
+    );
+    state = state.copyWith(playlists: reindexed);
+    _invalidatePlaylistPickerSummaries();
+  }
+
+  Future<void> reorderPlaylistTracks(
+    String playlistId,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    await _ensureLoaded();
+    final playlist = state.playlistById(playlistId);
+    if (playlist == null ||
+        oldIndex < 0 ||
+        oldIndex >= playlist.tracks.length ||
+        newIndex < 0 ||
+        newIndex > playlist.tracks.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final updatedTracks = [...playlist.tracks];
+    final moved = updatedTracks.removeAt(oldIndex);
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    updatedTracks.insert(newIndex, moved);
+    final reindexed = _reindexTrackEntries(updatedTracks);
+
+    await _db.reorderPlaylistTracks(
+      playlistId: playlistId,
+      trackKeysInOrder: reindexed.map((e) => e.key).toList(growable: false),
+      playlistUpdatedAt: now.toIso8601String(),
+    );
+    _replacePlaylistById(playlistId, (current) {
+      return current.copyWith(tracks: reindexed, updatedAt: now);
     });
     _invalidatePlaylistPickerSummaries();
   }

@@ -36,6 +36,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get homeRecent => '最近';
 
   @override
+  String get homeContinueListening => 'Continue listening';
+
+  @override
   String get historyFilterAll => 'すべて';
 
   @override
@@ -2519,6 +2522,28 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String collectionInLibraryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count in library',
+      one: '1 in library',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String collectionMissingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count missing',
+      one: '1 missing',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String collectionAddedToPlaylist(String playlistName) {
     return 'Added to \"$playlistName\"';
   }
@@ -2539,6 +2564,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get collectionRenamePlaylist => 'Rename playlist';
+
+  @override
+  String get collectionPinToTop => 'Pin to top';
+
+  @override
+  String get collectionUnpin => 'Unpin';
+
+  @override
+  String get collectionReorderPlaylists => 'Reorder playlists';
+
+  @override
+  String get collectionDoneReordering => 'Done reordering';
 
   @override
   String get collectionDeletePlaylist => 'Delete playlist';

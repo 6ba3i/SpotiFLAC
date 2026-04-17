@@ -21,6 +21,7 @@ import 'package:spotiflac_android/services/notification_service.dart';
 import 'package:spotiflac_android/services/update_checker.dart';
 import 'package:spotiflac_android/widgets/update_dialog.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
+import 'package:spotiflac_android/widgets/mini_player_bar.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('MainShell');
@@ -62,6 +63,7 @@ class _MainShellState extends ConsumerState<MainShell>
       duration: const Duration(milliseconds: 180),
       value: 1,
     );
+    ShellNavigationService.registerTabSelectionCallback(_onNavTap);
     ShellNavigationService.syncState(
       currentTabIndex: _currentIndex,
       showRepoTab: false,
@@ -226,6 +228,7 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   void dispose() {
+    ShellNavigationService.registerTabSelectionCallback(null);
     _shareSubscription?.cancel();
     _pageController.dispose();
     _tabJumpTransitionController.dispose();
@@ -519,27 +522,37 @@ class _MainShellState extends ConsumerState<MainShell>
         return true;
       },
       child: Scaffold(
-        body: AnimatedBuilder(
-          animation: _tabJumpTransitionController,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: tabs.length,
-            onPageChanged: _onPageChanged,
-            physics: const NeverScrollableScrollPhysics(),
-            itemBuilder: (context, index) => _KeepAliveTabPage(
-              key: ValueKey('page-$index'),
-              child: tabs[index],
+        body: Column(
+          children: [
+            Expanded(
+              child: AnimatedBuilder(
+                animation: _tabJumpTransitionController,
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: tabs.length,
+                  onPageChanged: _onPageChanged,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemBuilder: (context, index) => _KeepAliveTabPage(
+                    key: ValueKey('page-$index'),
+                    child: tabs[index],
+                  ),
+                ),
+                builder: (context, child) {
+                  final t = Curves.easeOutCubic.transform(
+                    _tabJumpTransitionController.value,
+                  );
+                  return Opacity(
+                    opacity: t,
+                    child: Transform.scale(
+                      scale: 0.985 + (0.015 * t),
+                      child: child,
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          builder: (context, child) {
-            final t = Curves.easeOutCubic.transform(
-              _tabJumpTransitionController.value,
-            );
-            return Opacity(
-              opacity: t,
-              child: Transform.scale(scale: 0.985 + (0.015 * t), child: child),
-            );
-          },
+            const MiniPlayerBar(),
+          ],
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _currentIndex.clamp(0, maxIndex),

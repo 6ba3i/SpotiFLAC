@@ -395,6 +395,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setAutoSkipUnavailableTracks(bool enabled) {
+    state = state.copyWith(autoSkipUnavailableTracks: enabled);
+    _saveSettings();
+  }
+
+  void setSmartQueueEnabled(bool enabled) {
+    state = state.copyWith(smartQueueEnabled: enabled);
+    _saveSettings();
+  }
+
   void setHistoryViewMode(String mode) {
     state = state.copyWith(historyViewMode: mode);
     _saveSettings();
@@ -467,6 +477,20 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setShowExtensionStore(bool enabled) {
     state = state.copyWith(showExtensionStore: enabled);
+    _saveSettings();
+  }
+
+  void togglePinnedCollection(String collectionId) {
+    final normalized = collectionId.trim();
+    if (normalized.isEmpty) return;
+    final ids = [...state.pinnedCollectionIds];
+    if (ids.remove(normalized)) {
+      state = state.copyWith(pinnedCollectionIds: ids);
+      _saveSettings();
+      return;
+    }
+    ids.add(normalized);
+    state = state.copyWith(pinnedCollectionIds: ids);
     _saveSettings();
   }
 

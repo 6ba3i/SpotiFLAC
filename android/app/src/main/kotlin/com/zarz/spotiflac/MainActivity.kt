@@ -5,10 +5,10 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
-import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.android.FlutterActivityLaunchConfigs.BackgroundMode
 import io.flutter.embedding.android.FlutterFragment
 import io.flutter.embedding.android.RenderMode
@@ -35,7 +35,7 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.Locale
 
-class MainActivity: FlutterFragmentActivity() {
+class MainActivity: AudioServiceFragmentActivity() {
     private val CHANNEL = "com.zarz.spotiflac/backend"
     private val DOWNLOAD_PROGRESS_STREAM_CHANNEL =
         "com.zarz.spotiflac/download_progress_stream"

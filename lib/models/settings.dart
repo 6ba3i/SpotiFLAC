@@ -28,6 +28,8 @@ class AppSettings {
   final bool useAlbumArtistForFolders;
   final bool usePrimaryArtistOnly; // Strip featured artists from folder name
   final bool filterContributingArtistsInAlbumArtist;
+  final bool autoSkipUnavailableTracks;
+  final bool smartQueueEnabled;
   final String historyViewMode;
   final String historyFilterMode;
   final bool askQualityBeforeDownload;
@@ -41,6 +43,7 @@ class AppSettings {
   final String singleFilenameFormat;
   final String albumFolderStructure;
   final bool showExtensionStore;
+  final List<String> pinnedCollectionIds;
   final String locale;
   final String lyricsMode;
   final String
@@ -105,6 +108,8 @@ class AppSettings {
     this.useAlbumArtistForFolders = true,
     this.usePrimaryArtistOnly = false,
     this.filterContributingArtistsInAlbumArtist = false,
+    this.autoSkipUnavailableTracks = true,
+    this.smartQueueEnabled = false,
     this.historyViewMode = 'grid',
     this.historyFilterMode = 'all',
     this.askQualityBeforeDownload = true,
@@ -118,6 +123,7 @@ class AppSettings {
     this.singleFilenameFormat = '{title} - {artist}',
     this.albumFolderStructure = 'artist_album',
     this.showExtensionStore = true,
+    this.pinnedCollectionIds = const [],
     this.locale = 'system',
     this.lyricsMode = 'embed',
     this.tidalHighFormat = 'mp3_320',
@@ -169,6 +175,8 @@ class AppSettings {
     bool? useAlbumArtistForFolders,
     bool? usePrimaryArtistOnly,
     bool? filterContributingArtistsInAlbumArtist,
+    bool? autoSkipUnavailableTracks,
+    bool? smartQueueEnabled,
     String? historyViewMode,
     String? historyFilterMode,
     bool? askQualityBeforeDownload,
@@ -185,6 +193,7 @@ class AppSettings {
     String? singleFilenameFormat,
     String? albumFolderStructure,
     bool? showExtensionStore,
+    List<String>? pinnedCollectionIds,
     String? locale,
     String? lyricsMode,
     String? tidalHighFormat,
@@ -232,6 +241,9 @@ class AppSettings {
       filterContributingArtistsInAlbumArtist:
           filterContributingArtistsInAlbumArtist ??
           this.filterContributingArtistsInAlbumArtist,
+      autoSkipUnavailableTracks:
+          autoSkipUnavailableTracks ?? this.autoSkipUnavailableTracks,
+      smartQueueEnabled: smartQueueEnabled ?? this.smartQueueEnabled,
       historyViewMode: historyViewMode ?? this.historyViewMode,
       historyFilterMode: historyFilterMode ?? this.historyFilterMode,
       askQualityBeforeDownload:
@@ -253,6 +265,7 @@ class AppSettings {
       singleFilenameFormat: singleFilenameFormat ?? this.singleFilenameFormat,
       albumFolderStructure: albumFolderStructure ?? this.albumFolderStructure,
       showExtensionStore: showExtensionStore ?? this.showExtensionStore,
+      pinnedCollectionIds: pinnedCollectionIds ?? this.pinnedCollectionIds,
       locale: locale ?? this.locale,
       lyricsMode: lyricsMode ?? this.lyricsMode,
       tidalHighFormat: tidalHighFormat ?? this.tidalHighFormat,

@@ -178,6 +178,12 @@ abstract class AppLocalizations {
   /// **'Recent'**
   String get homeRecent;
 
+  /// Home card title to resume the last playback session
+  ///
+  /// In en, this message translates to:
+  /// **'Continue listening'**
+  String get homeContinueListening;
+
   /// Filter chip - show all items
   ///
   /// In en, this message translates to:
@@ -4487,6 +4493,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 track} other{{count} tracks}}'**
   String collectionPlaylistTracks(int count);
 
+  /// Count of playlist tracks currently available in the library
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 in library} other{{count} in library}}'**
+  String collectionInLibraryCount(int count);
+
+  /// Count of playlist tracks missing from local/downloaded library
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 missing} other{{count} missing}}'**
+  String collectionMissingCount(int count);
+
   /// Snackbar after adding track to playlist
   ///
   /// In en, this message translates to:
@@ -4522,6 +4540,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rename playlist'**
   String get collectionRenamePlaylist;
+
+  /// Action to pin a playlist so it appears first
+  ///
+  /// In en, this message translates to:
+  /// **'Pin to top'**
+  String get collectionPinToTop;
+
+  /// Action to remove a playlist pin
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get collectionUnpin;
+
+  /// Tooltip label when entering playlist reorder mode
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder playlists'**
+  String get collectionReorderPlaylists;
+
+  /// Tooltip label when exiting playlist reorder mode
+  ///
+  /// In en, this message translates to:
+  /// **'Done reordering'**
+  String get collectionDoneReordering;
 
   /// Action to delete playlist
   ///

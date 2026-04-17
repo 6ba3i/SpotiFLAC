@@ -19,6 +19,16 @@ import 'package:spotiflac_android/widgets/download_service_picker.dart';
 import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 
+enum _FolderSortMode {
+  defaultOrder,
+  titleAz,
+  titleZa,
+  artistAz,
+  artistZa,
+  newest,
+  oldest,
+}
+
 class LibraryTracksFolderScreen extends ConsumerStatefulWidget {
   final LibraryTracksFolderMode mode;
   final String? playlistId;
@@ -38,6 +48,9 @@ class _LibraryTracksFolderScreenState
     extends ConsumerState<LibraryTracksFolderScreen> {
   bool _showTitleInAppBar = false;
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  _FolderSortMode _sortMode = _FolderSortMode.defaultOrder;
 
   bool _isSelectionMode = false;
   final Set<String> _selectedKeys = {};
@@ -47,12 +60,18 @@ class _LibraryTracksFolderScreenState
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -241,6 +260,112 @@ class _LibraryTracksFolderScreenState
     showAddTracksToPlaylistSheet(context, ref, selectedTracks);
   }
 
+  List<CollectionTrackEntry> _visibleEntries(List<CollectionTrackEntry> entries) {
+    final query = _searchQuery;
+    var filtered = entries;
+    if (query.isNotEmpty) {
+      filtered = entries.where((entry) {
+        final track = entry.track;
+        return track.name.toLowerCase().contains(query) ||
+            track.artistName.toLowerCase().contains(query) ||
+            track.albumName.toLowerCase().contains(query);
+      }).toList(growable: false);
+    }
+
+    if (_sortMode == _FolderSortMode.defaultOrder) {
+      return filtered;
+    }
+
+    final sorted = [...filtered];
+    switch (_sortMode) {
+      case _FolderSortMode.defaultOrder:
+        break;
+      case _FolderSortMode.titleAz:
+        sorted.sort(
+          (a, b) => a.track.name.toLowerCase().compareTo(b.track.name.toLowerCase()),
+        );
+        break;
+      case _FolderSortMode.titleZa:
+        sorted.sort(
+          (a, b) => b.track.name.toLowerCase().compareTo(a.track.name.toLowerCase()),
+        );
+        break;
+      case _FolderSortMode.artistAz:
+        sorted.sort(
+          (a, b) => a.track.artistName.toLowerCase().compareTo(
+            b.track.artistName.toLowerCase(),
+          ),
+        );
+        break;
+      case _FolderSortMode.artistZa:
+        sorted.sort(
+          (a, b) => b.track.artistName.toLowerCase().compareTo(
+            a.track.artistName.toLowerCase(),
+          ),
+        );
+        break;
+      case _FolderSortMode.newest:
+        sorted.sort((a, b) => b.addedAt.compareTo(a.addedAt));
+        break;
+      case _FolderSortMode.oldest:
+        sorted.sort((a, b) => a.addedAt.compareTo(b.addedAt));
+        break;
+    }
+    return sorted;
+  }
+
+  String _sortLabel(_FolderSortMode mode, BuildContext context) {
+    return switch (mode) {
+      _FolderSortMode.defaultOrder => context.l10n.searchSortDefault,
+      _FolderSortMode.titleAz => context.l10n.searchSortTitleAZ,
+      _FolderSortMode.titleZa => context.l10n.searchSortTitleZA,
+      _FolderSortMode.artistAz => context.l10n.searchSortArtistAZ,
+      _FolderSortMode.artistZa => context.l10n.searchSortArtistZA,
+      _FolderSortMode.newest => context.l10n.searchSortDateNewest,
+      _FolderSortMode.oldest => context.l10n.searchSortDateOldest,
+    };
+  }
+
+  Future<void> _showSortSheet() async {
+    var selected = _sortMode;
+    final colorScheme = Theme.of(context).colorScheme;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateSheet) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final mode in _FolderSortMode.values)
+                ListTile(
+                  onTap: () => setStateSheet(() => selected = mode),
+                  leading: Icon(
+                    mode == selected
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                  ),
+                  title: Text(_sortLabel(mode, ctx)),
+                ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: FilledButton(
+                  onPressed: () {
+                    setState(() => _sortMode = selected);
+                    Navigator.pop(ctx);
+                  },
+                  child: Text(context.l10n.dialogSave),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -307,7 +432,15 @@ class _LibraryTracksFolderScreenState
       LibraryTracksFolderMode.playlist =>
         context.l10n.collectionPlaylistEmptySubtitle,
     };
-    final folderTracks = entries
+    final visibleEntries = _visibleEntries(entries);
+    final canManualReorderTracks =
+        widget.mode == LibraryTracksFolderMode.playlist &&
+        widget.playlistId != null &&
+        !_isSelectionMode &&
+        _searchQuery.isEmpty &&
+        _sortMode == _FolderSortMode.defaultOrder &&
+        visibleEntries.length > 1;
+    final folderTracks = visibleEntries
         .map((entry) => entry.track)
         .toList(growable: false);
 
@@ -334,6 +467,8 @@ class _LibraryTracksFolderScreenState
                   playlist,
                   localState,
                 ),
+                if (entries.isNotEmpty)
+                  _buildSearchSortBar(context, colorScheme),
                 if (entries.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
@@ -342,10 +477,54 @@ class _LibraryTracksFolderScreenState
                       subtitle: emptySubtitle,
                     ),
                   )
+                else if (visibleEntries.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _EmptyFolderState(
+                      title: context.l10n.errorNoTracksFound,
+                      subtitle: context.l10n.homeSubtitle,
+                    ),
+                  )
+                else if (canManualReorderTracks)
+                  SliverReorderableList(
+                    itemCount: visibleEntries.length,
+                    onReorder: (oldIndex, newIndex) {
+                      final playlistId = widget.playlistId;
+                      if (playlistId == null) return;
+                      ref
+                          .read(libraryCollectionsProvider.notifier)
+                          .reorderPlaylistTracks(playlistId, oldIndex, newIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final entry = visibleEntries[index];
+                      return KeyedSubtree(
+                        key: ValueKey('reorder_${entry.key}'),
+                        child: StaggeredListItem(
+                          index: index,
+                          child: _CollectionTrackTile(
+                            entry: entry,
+                            mode: widget.mode,
+                            playlistId: widget.playlistId,
+                            localLibraryState: localState,
+                            folderTracks: folderTracks,
+                            isSelectionMode: _isSelectionMode,
+                            isSelected: false,
+                            trailingWidget: ReorderableDelayedDragStartListener(
+                              index: index,
+                              child: Icon(
+                                Icons.drag_handle_rounded,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  )
                 else
                   SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
-                      final entry = entries[index];
+                      final entry = visibleEntries[index];
                       final isSelected = _selectedKeys.contains(entry.key);
                       return KeyedSubtree(
                         key: ValueKey(entry.key),
@@ -368,7 +547,7 @@ class _LibraryTracksFolderScreenState
                           ),
                         ),
                       );
-                    }, childCount: entries.length),
+                    }, childCount: visibleEntries.length),
                   ),
                 SliverToBoxAdapter(
                   child: SizedBox(height: _isSelectionMode ? 200 : 32),
@@ -585,6 +764,46 @@ class _LibraryTracksFolderScreenState
         .removePlaylistCover(playlistId);
   }
 
+  Widget _buildSearchSortBar(BuildContext context, ColorScheme colorScheme) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: context.l10n.homeSubtitle,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          onPressed: () => _searchController.clear(),
+                          icon: const Icon(Icons.close_rounded),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHigh,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              onPressed: _showSortSheet,
+              tooltip: context.l10n.searchSortTitle,
+              icon: const Icon(Icons.sort_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAppBar(
     BuildContext context,
     ColorScheme colorScheme,
@@ -785,11 +1004,14 @@ class _LibraryTracksFolderScreenState
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _buildHeaderActionPlaceholder(),
-                              const SizedBox(width: 12),
+                              if (widget.mode !=
+                                  LibraryTracksFolderMode.wishlist) ...[
+                                _buildShufflePlayButton(visibleEntries: entries),
+                                const SizedBox(width: 12),
+                                _buildPlayAllCenterButton(visibleEntries: entries),
+                                const SizedBox(width: 12),
+                              ],
                               _buildDownloadAllCenterButton(entries),
-                              const SizedBox(width: 12),
-                              _buildHeaderActionPlaceholder(),
                             ],
                           ),
                         ],
@@ -825,8 +1047,47 @@ class _LibraryTracksFolderScreenState
     );
   }
 
-  Widget _buildHeaderActionPlaceholder() =>
-      const SizedBox(width: 48, height: 48);
+  Widget _buildShufflePlayButton({
+    required List<CollectionTrackEntry> visibleEntries,
+  }) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.15),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: IconButton(
+        onPressed: visibleEntries.isEmpty
+            ? null
+            : () => _shufflePlay(visibleEntries),
+        icon: const Icon(Icons.shuffle_rounded, size: 22, color: Colors.white),
+        tooltip: context.l10n.tooltipPlay,
+        padding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  Widget _buildPlayAllCenterButton({
+    required List<CollectionTrackEntry> visibleEntries,
+  }) {
+    final tracks = visibleEntries.map((e) => e.track).toList(growable: false);
+    return FilledButton.icon(
+      onPressed: tracks.isEmpty ? null : () => _playAll(tracks),
+      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+      label: Text(context.l10n.tooltipPlay),
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        minimumSize: const Size(0, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+    );
+  }
 
   Widget _buildDownloadAllCenterButton(List<CollectionTrackEntry> entries) {
     final tracks = entries.map((e) => e.track).toList(growable: false);
@@ -869,6 +1130,34 @@ class _LibraryTracksFolderScreenState
         );
       },
     );
+  }
+
+  void _shufflePlay(List<CollectionTrackEntry> entries) {
+    final tracks = entries.map((entry) => entry.track).toList(growable: false);
+    if (tracks.isEmpty) return;
+    final shuffled = [...tracks]..shuffle();
+    ref
+        .read(playbackProvider.notifier)
+        .playTrackList(shuffled)
+        .catchError((Object e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
+      );
+    });
+  }
+
+  void _playAll(List<Track> tracks) {
+    if (tracks.isEmpty) return;
+    ref
+        .read(playbackProvider.notifier)
+        .playTrackList(tracks)
+        .catchError((Object e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
+      );
+    });
   }
 
   void _downloadAll(List<Track> tracks) {
@@ -1064,6 +1353,7 @@ class _CollectionTrackTile extends ConsumerWidget {
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final Widget? trailingWidget;
 
   const _CollectionTrackTile({
     required this.entry,
@@ -1075,6 +1365,7 @@ class _CollectionTrackTile extends ConsumerWidget {
     this.isSelected = false,
     this.onTap,
     this.onLongPress,
+    this.trailingWidget,
   });
 
   @override
@@ -1234,20 +1525,25 @@ class _CollectionTrackTile extends ConsumerWidget {
           ),
           trailing: isSelectionMode
               ? null
-              : historyItem != null || localItem != null
-              ? IconButton(
-                  tooltip: context.l10n.tooltipPlay,
-                  onPressed: () {
-                    ref.read(playbackProvider.notifier).playTrackList([track]);
-                  },
-                  icon: Icon(Icons.play_arrow, color: colorScheme.primary),
-                  style: IconButton.styleFrom(
-                    backgroundColor: colorScheme.primaryContainer.withValues(
-                      alpha: 0.3,
-                    ),
-                  ),
-                )
-              : null,
+              : (trailingWidget ??
+                    (historyItem != null || localItem != null
+                        ? IconButton(
+                            tooltip: context.l10n.tooltipPlay,
+                            onPressed: () {
+                              ref
+                                  .read(playbackProvider.notifier)
+                                  .playTrackList([track]);
+                            },
+                            icon: Icon(
+                              Icons.play_arrow,
+                              color: colorScheme.primary,
+                            ),
+                            style: IconButton.styleFrom(
+                              backgroundColor: colorScheme.primaryContainer
+                                  .withValues(alpha: 0.3),
+                            ),
+                          )
+                        : null)),
           onTap: isSelectionMode
               ? onTap
               : () {

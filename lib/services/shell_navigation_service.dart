@@ -10,6 +10,7 @@ class ShellNavigationService {
 
   static int _currentTabIndex = 0;
   static bool _showRepoTab = false;
+  static void Function(int index)? _tabSelectionCallback;
 
   static void syncState({
     required int currentTabIndex,
@@ -26,5 +27,15 @@ class ShellNavigationService {
       return repoTabNavigatorKey.currentState;
     }
     return null;
+  }
+
+  static void registerTabSelectionCallback(
+    void Function(int index)? callback,
+  ) {
+    _tabSelectionCallback = callback;
+  }
+
+  static void openLibraryTab() {
+    _tabSelectionCallback?.call(1);
   }
 }

@@ -9,7 +9,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 final _log = AppLogger('LibraryCollectionsDb');
 
 const _dbFileName = 'library_collections.db';
-const _dbVersion = 1;
+const _dbVersion = 2;
 
 const _tableWishlist = 'wishlist_tracks';
 const _tableLoved = 'loved_tracks';
@@ -113,6 +113,7 @@ class LibraryCollectionsDatabase {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         cover_image_path TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -123,6 +124,7 @@ class LibraryCollectionsDatabase {
         playlist_id TEXT NOT NULL,
         track_key TEXT NOT NULL,
         track_json TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
         added_at TEXT NOT NULL,
         PRIMARY KEY (playlist_id, track_key),
         FOREIGN KEY (playlist_id) REFERENCES $_tablePlaylists(id) ON DELETE CASCADE
@@ -139,7 +141,13 @@ class LibraryCollectionsDatabase {
       'CREATE INDEX idx_${_tablePlaylists}_created_at ON $_tablePlaylists(created_at DESC)',
     );
     await db.execute(
+      'CREATE INDEX idx_${_tablePlaylists}_sort_order ON $_tablePlaylists(sort_order ASC)',
+    );
+    await db.execute(
       'CREATE INDEX idx_${_tablePlaylistTracks}_playlist_id ON $_tablePlaylistTracks(playlist_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_${_tablePlaylistTracks}_sort_order ON $_tablePlaylistTracks(playlist_id, sort_order ASC)',
     );
     await db.execute(
       'CREATE INDEX idx_${_tablePlaylistTracks}_added_at ON $_tablePlaylistTracks(added_at DESC)',
@@ -148,6 +156,54 @@ class LibraryCollectionsDatabase {
 
   Future<void> _upgradeDb(Database db, int oldVersion, int newVersion) async {
     _log.i('Upgrading collections database from v$oldVersion to v$newVersion');
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE $_tablePlaylists ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE $_tablePlaylistTracks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_${_tablePlaylists}_sort_order ON $_tablePlaylists(sort_order ASC)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_${_tablePlaylistTracks}_sort_order ON $_tablePlaylistTracks(playlist_id, sort_order ASC)',
+      );
+
+      final playlistRows = await db.query(
+        _tablePlaylists,
+        columns: ['id'],
+        orderBy: 'created_at DESC, rowid DESC',
+      );
+      for (var index = 0; index < playlistRows.length; index++) {
+        await db.update(
+          _tablePlaylists,
+          {'sort_order': index},
+          where: 'id = ?',
+          whereArgs: [playlistRows[index]['id']],
+        );
+      }
+
+      for (final playlistRow in playlistRows) {
+        final playlistId = playlistRow['id'] as String?;
+        if (playlistId == null || playlistId.isEmpty) continue;
+        final trackRows = await db.query(
+          _tablePlaylistTracks,
+          columns: ['track_key'],
+          where: 'playlist_id = ?',
+          whereArgs: [playlistId],
+          orderBy: 'added_at DESC, rowid DESC',
+        );
+        for (var index = 0; index < trackRows.length; index++) {
+          await db.update(
+            _tablePlaylistTracks,
+            {'sort_order': index},
+            where: 'playlist_id = ? AND track_key = ?',
+            whereArgs: [playlistId, trackRows[index]['track_key']],
+          );
+        }
+      }
+    }
   }
 
   Future<bool> migrateFromSharedPreferences() async {
@@ -258,11 +314,11 @@ class LibraryCollectionsDatabase {
     );
     final playlistRows = await db.query(
       _tablePlaylists,
-      orderBy: 'created_at DESC, rowid DESC',
+      orderBy: 'sort_order ASC, created_at DESC, rowid DESC',
     );
     final playlistTrackRows = await db.query(
       _tablePlaylistTracks,
-      orderBy: 'playlist_id ASC, added_at DESC, rowid DESC',
+      orderBy: 'playlist_id ASC, sort_order ASC, added_at DESC, rowid DESC',
     );
 
     return LibraryCollectionsSnapshot(
@@ -287,13 +343,14 @@ class LibraryCollectionsDatabase {
         p.id,
         p.name,
         p.cover_image_path,
+        p.sort_order,
         p.created_at,
         p.updated_at,
         COUNT(pt.track_key) AS track_count
       FROM $_tablePlaylists p
       LEFT JOIN $_tablePlaylistTracks pt ON pt.playlist_id = p.id
       GROUP BY p.id
-      ORDER BY p.created_at DESC, p.rowid DESC
+      ORDER BY p.sort_order ASC, p.created_at DESC, p.rowid DESC
     ''');
 
     final matchedCountsByPlaylistId = <String, int>{};
@@ -431,6 +488,7 @@ class LibraryCollectionsDatabase {
     required String name,
     required String createdAt,
     required String updatedAt,
+    required int sortOrder,
     String? coverImagePath,
   }) async {
     final db = await database;
@@ -438,6 +496,7 @@ class LibraryCollectionsDatabase {
       'id': id,
       'name': name,
       'cover_image_path': coverImagePath,
+      'sort_order': sortOrder,
       'created_at': createdAt,
       'updated_at': updatedAt,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -480,6 +539,7 @@ class LibraryCollectionsDatabase {
     required String playlistId,
     required String trackKey,
     required String trackJson,
+    required int sortOrder,
     required String addedAt,
     required String playlistUpdatedAt,
   }) async {
@@ -489,6 +549,7 @@ class LibraryCollectionsDatabase {
         'playlist_id': playlistId,
         'track_key': trackKey,
         'track_json': trackJson,
+        'sort_order': sortOrder,
         'added_at': addedAt,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       await txn.update(
@@ -514,8 +575,56 @@ class LibraryCollectionsDatabase {
           'playlist_id': playlistId,
           'track_key': track['track_key'],
           'track_json': track['track_json'],
+          'sort_order': int.tryParse(track['sort_order'] ?? '') ?? 0,
           'added_at': track['added_at'],
         }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      batch.update(
+        _tablePlaylists,
+        {'updated_at': playlistUpdatedAt},
+        where: 'id = ?',
+        whereArgs: [playlistId],
+      );
+      await batch.commit(noResult: true);
+    });
+  }
+
+  Future<void> reorderPlaylists({
+    required List<String> playlistIdsInOrder,
+    required String updatedAt,
+  }) async {
+    if (playlistIdsInOrder.isEmpty) return;
+    final db = await database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (var index = 0; index < playlistIdsInOrder.length; index++) {
+        batch.update(
+          _tablePlaylists,
+          {'sort_order': index, 'updated_at': updatedAt},
+          where: 'id = ?',
+          whereArgs: [playlistIdsInOrder[index]],
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
+  Future<void> reorderPlaylistTracks({
+    required String playlistId,
+    required List<String> trackKeysInOrder,
+    required String playlistUpdatedAt,
+  }) async {
+    if (trackKeysInOrder.isEmpty) return;
+    final db = await database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (var index = 0; index < trackKeysInOrder.length; index++) {
+        batch.update(
+          _tablePlaylistTracks,
+          {'sort_order': index},
+          where: 'playlist_id = ? AND track_key = ?',
+          whereArgs: [playlistId, trackKeysInOrder[index]],
+        );
       }
       batch.update(
         _tablePlaylists,

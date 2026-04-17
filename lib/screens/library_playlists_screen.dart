@@ -5,20 +5,50 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
+import 'package:spotiflac_android/providers/local_library_provider.dart';
+import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/screens/library_tracks_folder_screen.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
+import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/widgets/bottom_sheet_option_tile.dart';
 import 'package:spotiflac_android/utils/app_bar_layout.dart';
 
-class LibraryPlaylistsScreen extends ConsumerWidget {
+class LibraryPlaylistsScreen extends ConsumerStatefulWidget {
   const LibraryPlaylistsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final playlists = ref.watch(
+  ConsumerState<LibraryPlaylistsScreen> createState() =>
+      _LibraryPlaylistsScreenState();
+}
+
+class _LibraryPlaylistsScreenState extends ConsumerState<LibraryPlaylistsScreen> {
+  bool _reorderMode = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final playlistsState = ref.watch(
       libraryCollectionsProvider.select((state) => state.playlists),
     );
+    final historyItems = ref.watch(
+      downloadHistoryProvider.select((state) => state.items),
+    );
+    final localItems = ref.watch(localLibraryProvider.select((state) => state.items));
+    final downloadedKeys = <String>{
+      for (final item in historyItems) _downloadHistoryCollectionKey(item),
+    };
+    final inLibraryKeys = <String>{
+      ...downloadedKeys,
+      for (final item in localItems) _localCollectionKey(item),
+    };
+    final pinnedCollectionIds = ref.watch(
+      settingsProvider.select((s) => s.pinnedCollectionIds),
+    );
+    final pinnedSet = pinnedCollectionIds.toSet();
+    final playlists = _reorderMode
+        ? playlistsState
+        : _sortPlaylistsForDisplay(playlistsState, pinnedSet);
     final colorScheme = Theme.of(context).colorScheme;
     final topPadding = normalizedHeaderTopPadding(context);
 
@@ -37,6 +67,23 @@ class LibraryPlaylistsScreen extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.pop(context),
             ),
+            actions: [
+              IconButton(
+                tooltip: _reorderMode
+                    ? context.l10n.collectionDoneReordering
+                    : context.l10n.collectionReorderPlaylists,
+                icon: Icon(
+                  _reorderMode
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.reorder_rounded,
+                ),
+                onPressed: playlistsState.length < 2
+                    ? null
+                    : () {
+                        setState(() => _reorderMode = !_reorderMode);
+                      },
+              ),
+            ],
 
             flexibleSpace: LayoutBuilder(
               builder: (context, constraints) {
@@ -97,41 +144,64 @@ class LibraryPlaylistsScreen extends ConsumerWidget {
               ),
             )
           else
-            SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                // Even indices = playlist tiles, odd indices = dividers
-                if (index.isOdd) {
-                  return const Divider(height: 1);
-                }
-                final playlistIndex = index ~/ 2;
-                final playlist = playlists[playlistIndex];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 2,
-                  ),
-                  leading: _buildPlaylistThumbnail(context, playlist),
-                  title: Text(playlist.name),
-                  subtitle: Text(
-                    context.l10n.collectionPlaylistTracks(
-                      playlist.tracks.length,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => LibraryTracksFolderScreen(
-                          mode: LibraryTracksFolderMode.playlist,
-                          playlistId: playlist.id,
+            _reorderMode
+                ? SliverReorderableList(
+                    itemCount: playlists.length,
+                    onReorder: (oldIndex, newIndex) {
+                      ref
+                          .read(libraryCollectionsProvider.notifier)
+                          .reorderPlaylists(oldIndex, newIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final playlist = playlists[index];
+                      return KeyedSubtree(
+                        key: ValueKey('reorder_${playlist.id}'),
+                        child: _buildPlaylistTile(
+                          context,
+                          ref,
+                          playlist,
+                          isPinned: _isPinnedPlaylist(playlist.id, pinnedSet),
+                          trailing: ReorderableDelayedDragStartListener(
+                            index: index,
+                            child: Icon(
+                              Icons.drag_handle_rounded,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          subtitle: _buildPlaylistSubtitle(
+                            context,
+                            playlist,
+                            inLibraryKeys,
+                            downloadedKeys,
+                          ),
+                          enableNavigation: false,
                         ),
-                      ),
-                    );
-                  },
-                  onLongPress: () =>
-                      _showPlaylistOptionsSheet(context, ref, playlist),
-                );
-              }, childCount: playlists.length * 2 - 1),
-            ),
+                      );
+                    },
+                  )
+                : SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      if (index.isOdd) {
+                        return const Divider(height: 1);
+                      }
+                      final playlistIndex = index ~/ 2;
+                      final playlist = playlists[playlistIndex];
+                      return _buildPlaylistTile(
+                        context,
+                        ref,
+                        playlist,
+                        isPinned: _isPinnedPlaylist(playlist.id, pinnedSet),
+                        subtitle: _buildPlaylistSubtitle(
+                          context,
+                          playlist,
+                          inLibraryKeys,
+                          downloadedKeys,
+                        ),
+                        onLongPress: () =>
+                            _showPlaylistOptionsSheet(context, ref, playlist),
+                      );
+                    }, childCount: playlists.length * 2 - 1),
+                  ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -142,12 +212,116 @@ class LibraryPlaylistsScreen extends ConsumerWidget {
     );
   }
 
+  String _playlistPinKey(String playlistId) => 'playlist:$playlistId';
+
+  bool _isPinnedPlaylist(String playlistId, Set<String> pinnedIds) {
+    return pinnedIds.contains(_playlistPinKey(playlistId));
+  }
+
+  List<UserPlaylistCollection> _sortPlaylistsForDisplay(
+    List<UserPlaylistCollection> playlists,
+    Set<String> pinnedIds,
+  ) {
+    final sorted = [...playlists];
+    sorted.sort((a, b) {
+      final aPinned = _isPinnedPlaylist(a.id, pinnedIds);
+      final bPinned = _isPinnedPlaylist(b.id, pinnedIds);
+      if (aPinned != bPinned) {
+        return aPinned ? -1 : 1;
+      }
+      return a.sortOrder.compareTo(b.sortOrder);
+    });
+    return sorted;
+  }
+
+  String _downloadHistoryCollectionKey(DownloadHistoryItem item) {
+    final isrc = item.isrc?.trim();
+    if (isrc != null && isrc.isNotEmpty) return 'isrc:${isrc.toUpperCase()}';
+    final source = item.service.trim().isNotEmpty ? item.service.trim() : 'builtin';
+    return '$source:${item.id}';
+  }
+
+  String _localCollectionKey(LocalLibraryItem item) {
+    final isrc = item.isrc?.trim();
+    if (isrc != null && isrc.isNotEmpty) return 'isrc:${isrc.toUpperCase()}';
+    return 'local:${item.id}';
+  }
+
+  String _buildPlaylistSubtitle(
+    BuildContext context,
+    UserPlaylistCollection playlist,
+    Set<String> inLibraryKeys,
+    Set<String> downloadedKeys,
+  ) {
+    final total = playlist.tracks.length;
+    if (total == 0) return context.l10n.collectionPlaylistTracks(0);
+    var inLibraryCount = 0;
+    var downloadedCount = 0;
+    for (final entry in playlist.tracks) {
+      if (inLibraryKeys.contains(entry.key)) {
+        inLibraryCount++;
+      }
+      if (downloadedKeys.contains(entry.key)) {
+        downloadedCount++;
+      }
+    }
+    final missingCount = total - inLibraryCount;
+    return '${context.l10n.collectionPlaylistTracks(total)} • '
+        '${context.l10n.downloadedAlbumDownloadedCount(downloadedCount)} • '
+        '${context.l10n.collectionInLibraryCount(inLibraryCount)} • '
+        '${context.l10n.collectionMissingCount(missingCount)}';
+  }
+
+  Widget _buildPlaylistTile(
+    BuildContext context,
+    WidgetRef ref,
+    UserPlaylistCollection playlist, {
+    required bool isPinned,
+    required String subtitle,
+    Widget? trailing,
+    VoidCallback? onLongPress,
+    bool enableNavigation = true,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: _buildPlaylistThumbnail(context, playlist),
+      title: Row(
+        children: [
+          Expanded(child: Text(playlist.name)),
+          if (isPinned)
+            Icon(
+              Icons.push_pin_rounded,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+        ],
+      ),
+      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: trailing,
+      onTap: enableNavigation
+          ? () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => LibraryTracksFolderScreen(
+                    mode: LibraryTracksFolderMode.playlist,
+                    playlistId: playlist.id,
+                  ),
+                ),
+              );
+            }
+          : null,
+      onLongPress: enableNavigation ? onLongPress : null,
+    );
+  }
+
   void _showPlaylistOptionsSheet(
     BuildContext context,
     WidgetRef ref,
     UserPlaylistCollection playlist,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
+    final pinnedSet = ref.read(settingsProvider).pinnedCollectionIds.toSet();
+    final isPinned = _isPinnedPlaylist(playlist.id, pinnedSet);
 
     showModalBottomSheet<void>(
       context: context,
@@ -209,6 +383,21 @@ class LibraryPlaylistsScreen extends ConsumerWidget {
             Divider(
               height: 1,
               color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+
+            BottomSheetOptionTile(
+              icon: isPinned
+                  ? Icons.push_pin_rounded
+                  : Icons.push_pin_outlined,
+              title: isPinned
+                  ? context.l10n.collectionUnpin
+                  : context.l10n.collectionPinToTop,
+              onTap: () {
+                Navigator.pop(sheetContext);
+                ref
+                    .read(settingsProvider.notifier)
+                    .togglePinnedCollection(_playlistPinKey(playlist.id));
+              },
             ),
 
             BottomSheetOptionTile(

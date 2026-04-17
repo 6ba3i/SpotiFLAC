@@ -13,6 +13,7 @@ import 'package:spotiflac_android/providers/recent_access_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/services/shell_navigation_service.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/screens/album_screen.dart';
@@ -1043,7 +1044,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           content: Text(message),
           action: SnackBarAction(
             label: context.l10n.snackbarViewQueue,
-            onPressed: () {},
+            onPressed: ShellNavigationService.openLibraryTab,
           ),
         ),
       );

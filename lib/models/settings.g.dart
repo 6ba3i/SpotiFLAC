@@ -30,6 +30,8 @@ AppSettings _$AppSettingsFromJson(Map<String, dynamic> json) => AppSettings(
   usePrimaryArtistOnly: json['usePrimaryArtistOnly'] as bool? ?? false,
   filterContributingArtistsInAlbumArtist:
       json['filterContributingArtistsInAlbumArtist'] as bool? ?? false,
+  autoSkipUnavailableTracks: json['autoSkipUnavailableTracks'] as bool? ?? true,
+  smartQueueEnabled: json['smartQueueEnabled'] as bool? ?? false,
   historyViewMode: json['historyViewMode'] as String? ?? 'grid',
   historyFilterMode: json['historyFilterMode'] as String? ?? 'all',
   askQualityBeforeDownload: json['askQualityBeforeDownload'] as bool? ?? true,
@@ -48,6 +50,11 @@ AppSettings _$AppSettingsFromJson(Map<String, dynamic> json) => AppSettings(
   albumFolderStructure:
       json['albumFolderStructure'] as String? ?? 'artist_album',
   showExtensionStore: json['showExtensionStore'] as bool? ?? true,
+  pinnedCollectionIds:
+      (json['pinnedCollectionIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   locale: json['locale'] as String? ?? 'system',
   lyricsMode: json['lyricsMode'] as String? ?? 'embed',
   tidalHighFormat: json['tidalHighFormat'] as String? ?? 'mp3_320',
@@ -105,6 +112,8 @@ Map<String, dynamic> _$AppSettingsToJson(
   'usePrimaryArtistOnly': instance.usePrimaryArtistOnly,
   'filterContributingArtistsInAlbumArtist':
       instance.filterContributingArtistsInAlbumArtist,
+  'autoSkipUnavailableTracks': instance.autoSkipUnavailableTracks,
+  'smartQueueEnabled': instance.smartQueueEnabled,
   'historyViewMode': instance.historyViewMode,
   'historyFilterMode': instance.historyFilterMode,
   'askQualityBeforeDownload': instance.askQualityBeforeDownload,
@@ -118,6 +127,7 @@ Map<String, dynamic> _$AppSettingsToJson(
   'singleFilenameFormat': instance.singleFilenameFormat,
   'albumFolderStructure': instance.albumFolderStructure,
   'showExtensionStore': instance.showExtensionStore,
+  'pinnedCollectionIds': instance.pinnedCollectionIds,
   'locale': instance.locale,
   'lyricsMode': instance.lyricsMode,
   'tidalHighFormat': instance.tidalHighFormat,
